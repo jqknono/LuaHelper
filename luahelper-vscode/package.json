@@ -1,12 +1,12 @@
 {
-    "name": "luahelper",
-    "displayName": "Lua",
+    "name": "LuaForQingteng",
+    "displayName": "LuaForQingTeng",
     "description": "LuaHelper, Intellisense, Linting, Debugging, Code formatting, High-performance, and more.",
     "version": "0.2.21",
-    "publisher": "yinfei",
+    "publisher": "LuaForQingteng",
     "author": {
-        "name": "yinfei",
-        "email": "313745207@qq.com"
+        "name": "Cecil",
+        "email": "cai.li@qingteng.cn"
     },
     "license": "BSD-3-Clause",
     "keywords": [
@@ -26,10 +26,10 @@
     "icon": "images/luahelper.png",
     "repository": {
         "type": "git",
-        "url": "https://github.com/Tencent/LuaHelper.git"
+        "url": "https://github.com/jqknono/LuaHelper"
     },
     "bugs": {
-        "url": "https://github.com/Tencent/LuaHelper.git"
+        "url": "https://github.com/jqknono/LuaHelper"
     },
     "engines": {
         "vscode": "^1.53.0"
@@ -246,6 +246,89 @@
                     {
                         "type": "LuaHelper-Debug",
                         "request": "launch",
+                        "name": "Windows agent-3.x Lua",
+                        "cwd": "${fileDirname}",
+                        "luaFileExtension": "lua",
+                        "connectionPort": 8818,
+                        "stopOnEntry": true,
+                        "autoPathMode": false,
+                        "program": "C:/Program Files/TitanAgent/TitanAgent.exe",
+                        "args": [
+                            "-a",
+                            "-c",
+                            "-l",
+                            "-u",
+                            "'${file}'"
+                        ]
+                    },
+                    {
+                        "type": "LuaHelper-Debug",
+                        "request": "launch",
+                        "name": "Windows agent-4.x Lua",
+                        "cwd": "${fileDirname}",
+                        "luaFileExtension": "lua",
+                        "connectionPort": 8818,
+                        "stopOnEntry": true,
+                        "autoPathMode": false,
+                        "program": "C:/Program Files/TitanAgent/bin/TitanAgent.exe",
+                        "args": [
+                            "-a",
+                            "-c",
+                            "-l",
+                            "-u",
+                            "'${file}'"
+                        ]
+                    },
+                    {
+                        "type": "LuaHelper-Debug",
+                        "request": "launch",
+                        "name": "Linux agent-3.x Lua",
+                        "cwd": "${fileDirname}",
+                        "luaFileExtension": "lua",
+                        "connectionPort": 8818,
+                        "stopOnEntry": true,
+                        "autoPathMode": false,
+                        "program": "/titan/agent/titanagent",
+                        "args": [
+                            "-a",
+                            "-c",
+                            "-l",
+                            "-u",
+                            "'${file}'"
+                        ]
+                    },
+                    {
+                        "type": "LuaHelper-Debug",
+                        "request": "launch",
+                        "name": "Linux agent-4.x Lua",
+                        "cwd": "${fileDirname}",
+                        "luaFileExtension": "lua",
+                        "connectionPort": 8818,
+                        "stopOnEntry": true,
+                        "autoPathMode": false,
+                        "program": "/titan/agent/bin/titanagent",
+                        "args": [
+                            "-a",
+                            "-c",
+                            "-l",
+                            "-u",
+                            "'${file}'"
+                        ]
+                    },
+                    {
+                        "type": "LuaHelper-Debug",
+                        "request": "launch",
+                        "name": "Debug Lua & Cpp TitanAgent",
+                        "description": "lua和cpp联合调试, 先启动lua调试器, 再启动c++调试器.",
+                        "cwd": "${fileDirname}",
+                        "luaFileExtension": "lua",
+                        "connectionPort": 8818,
+                        "stopOnEntry": true,
+                        "autoPathMode": false
+                    },
+                    {
+                        "type": "LuaHelper-Debug",
+                        "request": "launch",
                         "name": "LuaHelper-Attach",
                         "description": "通用模式,通常调试项目请选择此模式",
                         "cwd": "${workspaceFolder}",
@@ -270,14 +353,117 @@
                 ],
                 "configurationSnippets": [
                     {
-                        "label": "LuaHelper: Attach",
+                        "label": "LuaHelper: Windows agent-3.x",
+                        "description": "LuaHelper debug only file",
+                        "body": {
+                            "type": "LuaHelper-Debug",
+                            "request": "launch",
+                            "name": "Windows agent-3.x Lua",
+                            "cwd": "^\"\\${fileDirname}\"",
+                            "luaFileExtension": "lua",
+                            "connectionPort": 8818,
+                            "stopOnEntry": true,
+                            "autoPathMode": false,
+                            "program": "C:/Program Files/TitanAgent/TitanAgent.exe",
+                            "args": [
+                                "-a",
+                                "-c",
+                                "-l",
+                                "-u",
+                                "^\"'\\${file}'\""
+                            ]
+                        }
+                    },
+                    {
+                        "label": "LuaHelper: Windows agent-4.x",
+                        "description": "LuaHelper debug only file",
+                        "body": {
+                            "type": "LuaHelper-Debug",
+                            "request": "launch",
+                            "name": "Windows agent-4.x Lua",
+                            "cwd": "^\"\\${fileDirname}\"",
+                            "luaFileExtension": "lua",
+                            "connectionPort": 8818,
+                            "stopOnEntry": true,
+                            "autoPathMode": false,
+                            "program": "C:/Program Files/TitanAgent/TitanAgent.exe",
+                            "args": [
+                                "-a",
+                                "-c",
+                                "-l",
+                                "-u",
+                                "^\"'\\${file}'\""
+                            ]
+                        }
+                    },
+                    {
+                        "label": "LuaHelper: Linux agent-3.x",
+                        "description": "LuaHelper debug only file",
+                        "body": {
+                            "type": "LuaHelper-Debug",
+                            "request": "launch",
+                            "name": "Linux agent-3.x Lua",
+                            "cwd": "^\"\\${fileDirname}\"",
+                            "luaFileExtension": "lua",
+                            "connectionPort": 8818,
+                            "stopOnEntry": true,
+                            "autoPathMode": false,
+                            "program": "/titan/agent/titanagent",
+                            "args": [
+                                "-a",
+                                "-c",
+                                "-l",
+                                "-u",
+                                "^\"'\\${file}'\""
+                            ]
+                        }
+                    },
+                    {
+                        "label": "LuaHelper: Linux agent-4.x",
+                        "description": "LuaHelper debug only file",
+                        "body": {
+                            "type": "LuaHelper-Debug",
+                            "request": "launch",
+                            "name": "Linux agent-4.x Lua",
+                            "cwd": "^\"\\${fileDirname}\"",
+                            "luaFileExtension": "lua",
+                            "connectionPort": 8818,
+                            "stopOnEntry": true,
+                            "autoPathMode": false,
+                            "program": "/titan/agent/bin/titanagent",
+                            "args": [
+                                "-a",
+                                "-c",
+                                "-l",
+                                "-u",
+                                "^\"'\\${file}'\""
+                            ]
+                        }
+                    },
+                    {
+                        "label": "LuaHelper: Debug Lua & Cpp Synchronously",
+                        "description": "lua和cpp联合调试, 先启动lua调试器, 再启动c++调试器",
+                        "body": {
+                            "type": "LuaHelper-Debug",
+                            "request": "launch",
+                            "name": "Debug Lua & Cpp TitanAgent",
+                            "description": "lua和cpp联合调试, 先启动lua调试器, 再启动c++调试器.",
+                            "cwd": "^\"\\${fileDirname}\"",
+                            "luaFileExtension": "lua",
+                            "connectionPort": 8818,
+                            "stopOnEntry": true,
+                            "autoPathMode": false
+                        }
+                    },
+                    {
+                        "label": "LuaHelper: 标准Lua Attach",
                         "description": "LuaHelper debug attach by socket",
                         "body": {
                             "type": "LuaHelper-Debug",
                             "request": "launch",
                             "name": "LuaHelper-Attach",
                             "description": "通用模式,通常调试项目请选择此模式",
-                            "cwd": "${workspaceFolder}",
+                            "cwd": "^\"\\${workspaceFolder}\"",
                             "luaFileExtension": "",
                             "connectionPort": 8818,
                             "stopOnEntry": true,
@@ -286,7 +472,7 @@
                         }
                     },
                     {
-                        "label": "LuaHelper: Debug File",
+                        "label": "LuaHelper: 标准Lua Launch",
                         "description": "LuaHelper debug only file",
                         "body": {
                             "type": "LuaHelper-Debug",
@@ -328,7 +514,6 @@
                     "default": "#569CD6",
                     "description": "%luahelper.colors.annotatetype%"
                 },
-
                 "luahelper.base.rootdir": {
                     "type": "string",
                     "default": "./",
@@ -413,7 +598,6 @@
                     "type": "boolean",
                     "description": "%luahelper.show.online%"
                 },
-               
                 "luahelper.base.showCostTime": {
                     "default": false,
                     "scope": "resource",
@@ -469,7 +653,7 @@
                     "markdownDescription": "%luahelper.format.continuation_indent_width%"
                 },
                 "luahelper.format.keep_simple_function_one_line": {
-                    "default": false,
+                    "default": true,
                     "scope": "resource",
                     "type": "boolean",
                     "markdownDescription": "%luahelper.format.keep_simple_function_one_line%"
@@ -505,7 +689,7 @@
                     "markdownDescription": "%luahelper.format.break_before_functioncall_rp%"
                 },
                 "luahelper.format.align_parameter": {
-                    "default": false,
+                    "default": true,
                     "scope": "resource",
                     "type": "boolean",
                     "markdownDescription": "%luahelper.format.align_parameter%"
@@ -535,13 +719,13 @@
                     "markdownDescription": "%luahelper.format.align_table_field%"
                 },
                 "luahelper.format.break_after_table_lb": {
-                    "default": false,
+                    "default": true,
                     "scope": "resource",
                     "type": "boolean",
                     "markdownDescription": "%luahelper.format.break_after_table_lb%"
                 },
                 "luahelper.format.break_before_table_rb": {
-                    "default": false,
+                    "default": true,
                     "scope": "resource",
                     "type": "boolean",
                     "markdownDescription": "%luahelper.format.break_before_table_rb%"
@@ -553,7 +737,7 @@
                     "markdownDescription": "%luahelper.format.chop_down_table%"
                 },
                 "luahelper.format.chop_down_kv_table": {
-                    "default": true,
+                    "default": false,
                     "scope": "resource",
                     "type": "boolean",
                     "markdownDescription": "%luahelper.format.chop_down_kv_table%"
@@ -617,7 +801,7 @@
                     "scope": "resource",
                     "type": "integer",
                     "markdownDescription": "%luahelper.format.line_breaks_after_function_body%"
-                },             
+                },
                 "luahelper.Warn.AllEnable": {
                     "default": true,
                     "scope": "resource",

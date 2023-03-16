@@ -1,6 +1,10 @@
 
 # LuaHelper Guide
 
+- Fork from https://github.com/Tencent/LuaHelper
+- 为青藤3.x/4.0, Windows/Linux客户端Agent定制.
+- 青藤定制文档: https://confluence.qingteng.cn/pages/viewpage.action?pageId=139771241
+
 [![version](https://vsmarketplacebadges.dev/version-short/yinfei.luahelper.png)](https://marketplace.visualstudio.com/items?itemName=yinfei.luahelper)
 [![rating](https://vsmarketplacebadges.dev/rating-short/yinfei.luahelper.png)](https://marketplace.visualstudio.com/items?itemName=yinfei.luahelper)
 [![installs](https://vsmarketplacebadges.dev/installs-short/yinfei.luahelper.png)](https://marketplace.visualstudio.com/items?itemName=yinfei.luahelper)

@@ -282,6 +282,24 @@ export class LuaDebugSession extends LoggingDebugSession {
             this.startServer(sendArgs);
         }
 
+        //3. 适配Qingteng Agent
+        // 拷贝LuaPanda.lua文件到titan agent目录
+        let LuaPandaContent = fs.readFileSync(Tools.getLuaPathInExtension());
+        let LuaPandaPath = ""
+        if (os.type() === "Windows_NT") {
+            LuaPandaPath = "c:\\program files\\titanagent\\data\\script";
+        } else if (os.type() === "Linux") {
+            LuaPandaPath = "/titan/agent/data/script";
+        }
+        if (!fs.existsSync(LuaPandaPath)) {
+            fs.mkdirSync(LuaPandaPath);
+        }
+        LuaPandaPath += "/LuaPanda.lua";
+        // write if not exist
+        if (!fs.existsSync(LuaPandaPath)) {
+            fs.writeFileSync(LuaPandaPath, LuaPandaContent);
+        }
+
         this.breakpointsArray = new Array();
         this.sendEvent(new InitializedEvent()); //收到返回后，执行setbreakpoint
         
