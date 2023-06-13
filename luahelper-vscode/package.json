@@ -2,7 +2,7 @@
     "name": "LuaForQingteng",
     "displayName": "LuaForQingTeng",
     "description": "LuaHelper, Intellisense, Linting, Debugging, Code formatting, High-performance, and more.",
-    "version": "1.2.22",
+    "version": "2.2.22",
     "publisher": "LuaForQingteng",
     "author": {
         "name": "Cecil",
@@ -731,13 +731,13 @@
                     "markdownDescription": "%luahelper.format.break_before_table_rb%"
                 },
                 "luahelper.format.chop_down_table": {
-                    "default": false,
+                    "default": true,
                     "scope": "resource",
                     "type": "boolean",
                     "markdownDescription": "%luahelper.format.chop_down_table%"
                 },
                 "luahelper.format.chop_down_kv_table": {
-                    "default": false,
+                    "default": true,
                     "scope": "resource",
                     "type": "boolean",
                     "markdownDescription": "%luahelper.format.chop_down_kv_table%"
