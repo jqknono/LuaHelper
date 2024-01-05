@@ -2,7 +2,7 @@
     "name": "LuaForQingteng",
     "displayName": "LuaForQingTeng",
     "description": "LuaHelper, Intellisense, Linting, Debugging, Code formatting, High-performance, and more.",
-    "version": "2.2.23",
+    "version": "2.2.24",
     "publisher": "LuaForQingteng",
     "author": {
         "name": "Cecil",
@@ -336,7 +336,7 @@
                         "connectionPort": 8818,
                         "stopOnEntry": true,
                         "autoPathMode": false,
-                        "program": "ssh root@$10.1.2.3 '/titan/agent/titanagent -a -c -l -u /titan/agent/data/script/unittest_container.lua'"
+                        "program": "rsync -avzL /titan/agent/data/script root@10.1.2.3:/titan/agent/data; ssh root@$10.1.2.3 '/titan/agent/titanagent -a -c -l -u /titan/agent/data/script/unittest_container.lua'"
                     },
                     {
                         "type": "LuaHelper-Debug",
@@ -480,7 +480,7 @@
                             "connectionPort": 8818,
                             "stopOnEntry": true,
                             "autoPathMode": false,
-                            "program": "ssh root@$10.1.2.3 '/titan/agent/titanagent -a -c -l -u /titan/agent/data/script/unittest.lua'"
+                            "program": "rsync -avzL /titan/agent/data/script root@10.1.2.3:/titan/agent/data; ssh root@$10.1.2.3 '/titan/agent/titanagent -a -c -l -u /titan/agent/data/script/unittest_container.lua'"
                         }
                     },
                     {
