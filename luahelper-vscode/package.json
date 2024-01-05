@@ -2,7 +2,7 @@
     "name": "LuaForQingteng",
     "displayName": "LuaForQingTeng",
     "description": "LuaHelper, Intellisense, Linting, Debugging, Code formatting, High-performance, and more.",
-    "version": "2.2.22",
+    "version": "2.2.23",
     "publisher": "LuaForQingteng",
     "author": {
         "name": "Cecil",
@@ -329,6 +329,18 @@
                     {
                         "type": "LuaHelper-Debug",
                         "request": "launch",
+                        "name": "Debug Lua Remote",
+                        "description": "远程调试lua",
+                        "cwd": "${fileDirname}",
+                        "luaFileExtension": "lua",
+                        "connectionPort": 8818,
+                        "stopOnEntry": true,
+                        "autoPathMode": false,
+                        "program": "ssh root@$10.1.2.3 '/titan/agent/titanagent -a -c -l -u /titan/agent/data/script/unittest_container.lua'"
+                    },
+                    {
+                        "type": "LuaHelper-Debug",
+                        "request": "launch",
                         "name": "LuaHelper-Attach",
                         "description": "通用模式,通常调试项目请选择此模式",
                         "cwd": "${workspaceFolder}",
@@ -442,7 +454,7 @@
                     },
                     {
                         "label": "LuaHelper: Debug Lua & Cpp Synchronously",
-                        "description": "lua和cpp联合调试, 先启动lua调试器, 再启动c++调试器",
+                        "description": "lua和cpp联合调试",
                         "body": {
                             "type": "LuaHelper-Debug",
                             "request": "launch",
@@ -453,6 +465,22 @@
                             "connectionPort": 8818,
                             "stopOnEntry": true,
                             "autoPathMode": false
+                        }
+                    },
+                    {
+                        "label": "LuaHelper: Debug Lua Remote",
+                        "description": "lua和cpp联合调试",
+                        "body": {
+                            "type": "LuaHelper-Debug",
+                            "request": "launch",
+                            "name": "Debug Lua Remote",
+                            "description": "远程调试lua",
+                            "cwd": "^\"\\${fileDirname}\"",
+                            "luaFileExtension": "lua",
+                            "connectionPort": 8818,
+                            "stopOnEntry": true,
+                            "autoPathMode": false,
+                            "program": "ssh root@$10.1.2.3 '/titan/agent/titanagent -a -c -l -u /titan/agent/data/script/unittest.lua'"
                         }
                     },
                     {
