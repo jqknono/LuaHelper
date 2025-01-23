@@ -16,11 +16,37 @@ func parserTypeState(l *annotatelexer.AnnotateLexer) annotateast.AnnotateState {
 	typeState := &annotateast.AnnotateTypeState{}
 
 	for {
+		// const
 		if l.LookAheadKind() == annotatelexer.ATokenKwConst {
 			typeState.ListConst = append(typeState.ListConst, true)
 			l.NextTokenOfKind(annotatelexer.ATokenKwConst)
+
+			if l.LookAheadKind() == annotatelexer.ATokenKwEnum {
+				// const enum
+				typeState.ListEnum = append(typeState.ListEnum, true)
+				l.NextTokenOfKind(annotatelexer.ATokenKwEnum)
+			} else {
+				// const
+				typeState.ListEnum = append(typeState.ListEnum, false)
+			}
 		} else {
-			typeState.ListConst = append(typeState.ListConst, false)
+			// enum
+			if l.LookAheadKind() == annotatelexer.ATokenKwEnum {
+				typeState.ListEnum = append(typeState.ListEnum, true)
+				l.NextTokenOfKind(annotatelexer.ATokenKwEnum)
+
+				if l.LookAheadKind() == annotatelexer.ATokenKwConst {
+					// enum const
+					typeState.ListConst = append(typeState.ListConst, true)
+					l.NextTokenOfKind(annotatelexer.ATokenKwConst)
+				} else {
+					// enum
+					typeState.ListConst = append(typeState.ListConst, false)
+				}
+			} else {
+				typeState.ListEnum = append(typeState.ListEnum, false)
+				typeState.ListConst = append(typeState.ListConst, false)
+			}
 		}
 
 		oneType := parserOneType(l)
@@ -41,7 +67,7 @@ func parserTypeState(l *annotatelexer.AnnotateLexer) annotateast.AnnotateState {
 }
 
 // 解析@Alias
-//---@alias NEW_NAME TYPE
+// ---@alias NEW_NAME TYPE
 func parserAliasState(l *annotatelexer.AnnotateLexer) annotateast.AnnotateState {
 	// skip alias token
 	l.NextTokenOfKind(annotatelexer.ATokenKwAlias)
@@ -98,8 +124,11 @@ func parserClassState(l *annotatelexer.AnnotateLexer) annotateast.AnnotateState 
 		for {
 			// 解析多个父类
 			oneParentName := l.NextFieldName()
-			classState.ParentNameList = append(classState.ParentNameList, oneParentName)
-			classState.ParentLocList = append(classState.ParentLocList, l.GetNowLoc())
+			// 如果自己的类型与父类型一样，会导致递归出错，忽略该父类型。
+			if oneParentName != classState.Name {
+				classState.ParentNameList = append(classState.ParentNameList, oneParentName)
+				classState.ParentLocList = append(classState.ParentLocList, l.GetNowLoc())
+			}
 
 			if l.LookAheadKind() == annotatelexer.ATokenSepComma {
 				// 是逗号， 表示有多个父类
@@ -249,7 +278,7 @@ func parserReturnState(l *annotatelexer.AnnotateLexer) annotateast.AnnotateState
 }
 
 // 解析@generic
-//---@generic T1 [: PARENT_TYPE] [, T2 [: PARENT_TYPE]] @comment @comment
+// ---@generic T1 [: PARENT_TYPE] [, T2 [: PARENT_TYPE]] @comment @comment
 func parserGenericState(l *annotatelexer.AnnotateLexer) annotateast.AnnotateState {
 	// 前面的关键词为generic 跳过
 	l.NextTokenOfKind(annotatelexer.ATokenKwGeneric)
@@ -305,4 +334,37 @@ func parserVarargState(l *annotatelexer.AnnotateLexer) annotateast.AnnotateState
 	varargState.Comment, varargState.CommentLoc = l.GetRemainComment()
 
 	return varargState
+}
+
+// 解析@enum
+// ---@enum start @comment  表示枚举段的开始
+// ---@enum end @comment  表示枚举段的结束
+func parserEnumState(l *annotatelexer.AnnotateLexer) annotateast.AnnotateState {
+	nowLoc := l.GetNowLoc()
+
+	// 前面的关键词为enum 跳过
+	l.NextTokenOfKind(annotatelexer.ATokenKwEnum)
+
+	enumState := &annotateast.AnnotateEnumState{
+		EnumLoc: nowLoc,
+	}
+
+	aheadKind := l.LookAheadKind()
+
+	if aheadKind == annotatelexer.ATokenKwIdentifier {
+		// 为其他的标识符
+		nameStr := l.NextTypeIdentifier()
+		if nameStr == "start" {
+			enumState.EnumType = annotateast.EnumTypeStart
+		} else if nameStr == "end" {
+			enumState.EnumType = annotateast.EnumTypeEnd
+		} else {
+			// 不合法的enum
+			return &annotateast.AnnotateNotValidState{}
+		}
+	}
+
+	// 获取这个state的多余注释
+	enumState.Comment, enumState.CommentLoc = l.GetRemainComment()
+	return enumState
 }

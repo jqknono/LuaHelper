@@ -15,7 +15,7 @@ import (
 )
 
 // 插件定义的版本号
-var clientVerStr string = "0.2.22"
+var clientVerStr string = "0.2.29"
 
 type serverState int
 
@@ -128,12 +128,12 @@ func CreateServer() *jrpc2.Server {
 	return lspServer.server
 }
 
-//getAllProject 获取CheckProject
+// getAllProject 获取CheckProject
 func (g *LspServer) getAllProject() *check.AllProject {
 	return g.project
 }
 
-//getFileCache 获取文件缓冲map
+// getFileCache 获取文件缓冲map
 func (g *LspServer) getFileCache() *lspcommon.FileMapCache {
 	return g.fileCache
 }
