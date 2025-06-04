@@ -81,5 +81,15 @@
     "luahelper.format.spaces_around_equals_in_field": "Inserts spaces around the equal sign in key/value fields. Other assignments are not affected, though they may be affected by other options or behavior of the formatter [here](https://github.com/Koihik/LuaFormatter/blob/master/docs/Style-Config.md#spaces_around_equals_in_field).\n",
     "luahelper.format.line_breaks_after_function_body": "Line breaks after the function body [here](https://github.com/Koihik/LuaFormatter/blob/master/docs/Style-Config.md#line_breaks_after_function_body).\n",
     "luahelper.base.PreviewFieldsNum": "When hovering to view a table, limits the maximum number of previews for fields.",
-    "luahelper.base.enableReport": "Report the number of users."
+    "luahelper.base.enableReport": "Report the number of users.",
+    "luahelper.test.luaExe": "Path to Lua executable. Defaults to 'lua'",
+    "luahelper.test.launchArgs": "Launch arguments for test execution",
+    "luahelper.test.testGlob": "Glob pattern to find test files. Defaults to '**/[tT]est*.lua'",
+    "luahelper.test.testRegex": "Regular expression to find test functions. Defaults to /^\\s*function\\s+(?:\\w*:)?(?<test>[tT]est\\w*)\\(\\)(?:.*)$/",
+    "luahelper.test.testEncoding": "Test file encoding. Defaults to 'utf8'",
+    "luahelper.test.decorationRegex": "Regular expression to find line number and failure message. Defaults to /\\.lua:(?<line>[1-9][0-9]*):(?<message>.*)stack traceback:/",
+    "luahelper.test.logpanel": "Write diagnostic logs to an output panel",
+    "luahelper.test.logfile": "Write diagnostic logs to the given file",
+    "luahelper.test.debugPort": "Port number for LuaPanda debug connection. Defaults to 8818",
+    "luahelper.test.stopOnEntry": "Stop on entry when debugging tests. Defaults to true"
 }

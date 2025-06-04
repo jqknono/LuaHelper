@@ -7,7 +7,6 @@ node_modules
 .gradle
 .idea
 temp
-/debugger
 /server
 /package-lock.json
 /temp

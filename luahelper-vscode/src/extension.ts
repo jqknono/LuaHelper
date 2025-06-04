@@ -15,6 +15,7 @@ import { DebugLogger } from './common/logManager';
 import { LuaConfigurationProvider } from './luapandaDebug';
 import { LuaFormatRangeProvider, LuaFormatProvider } from "./luaformat";
 import { OnlinePeople } from './onlinePeople';
+import { LuaTestController } from './luaTestController';
 
 
 import {
@@ -91,6 +92,9 @@ export function activate(context: vscode.ExtensionContext) {
 
     // left progess bar
     progressBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+
+    // Initialize test controller
+    new LuaTestController(context);
 
     startServer();
 }

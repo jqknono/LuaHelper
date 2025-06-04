@@ -81,5 +81,15 @@
     "luahelper.format.spaces_around_equals_in_field": "Inserts spaces around the equal sign in key/value fields. Other assignments are not affected, though they may be affected by other options or behavior of the formatter [here](https://github.com/Koihik/LuaFormatter/blob/master/docs/Style-Config.md#spaces_around_equals_in_field).\n",
     "luahelper.format.line_breaks_after_function_body": "函数体后换行数. [here](https://github.com/Koihik/LuaFormatter/blob/master/docs/Style-Config.md#line_breaks_after_function_body).\n",
     "luahelper.base.PreviewFieldsNum": "当代码提示预览一个table时, 显示table最多的成员数量",
-    "luahelper.base.enableReport": "上报用户数"
+    "luahelper.base.enableReport": "上报用户数",
+    "luahelper.test.luaExe": "Lua 可执行文件路径，默认为 'lua'",
+    "luahelper.test.launchArgs": "测试执行的启动参数",
+    "luahelper.test.testGlob": "查找测试文件的通配符模式，默认为 '**/[tT]est*.lua'",
+    "luahelper.test.testRegex": "查找测试函数的正则表达式，默认为 /^\\s*function\\s+(?:\\w*:)?(?<test>[tT]est[\\w]*)\\(\\)(?:.*)$/",
+    "luahelper.test.testEncoding": "测试文件编码，默认为 'utf8'",
+    "luahelper.test.decorationRegex": "查找行号和失败消息的正则表达式，默认为 /\\.lua:(?<line>[1-9][0-9]*):(?<message>.*)stack traceback:/",
+    "luahelper.test.logpanel": "将诊断日志写入输出面板",
+    "luahelper.test.logfile": "将诊断日志写入指定文件",
+    "luahelper.test.debugPort": "LuaPanda 调试连接端口号，默认为 8818",
+    "luahelper.test.stopOnEntry": "调试测试时在入口处停止，默认为 true"
 }

@@ -62,7 +62,7 @@ export class UpdateManager{
     // 更新调试器lua文件(读取预置文件，写入工程的目标文件中)
     public updateLuaPandaFile(LuaPandaPath) {
         //文件替换
-        let luapandaContent = fs.readFileSync(Tools.getLuaPathInExtension());
+        let luapandaContent = fs.readFileSync(Tools.getLuaPandaPathInExtension());
         try {
             fs.writeFileSync(LuaPandaPath, luapandaContent);
             DebugLogger.showTips("升级成功, " + LuaPandaPath + " 已升级到 " + Tools.adapterVersion , 0);

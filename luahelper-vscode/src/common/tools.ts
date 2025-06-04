@@ -13,8 +13,14 @@ export class Tools {
 
     // 路径相关函数
     // 获取扩展中预置的lua文件位置
-    public static getLuaPathInExtension() : string{
+    public static getLuaPandaPathInExtension() : string{
         let luaPathInVSCodeExtension = this.VSCodeExtensionPath + "/debugger/LuaPanda.lua";
+        return luaPathInVSCodeExtension;
+    }
+
+    // 获取扩展中预置的lua文件位置
+    public static getQtAgentUnitPathInExtension() : string{
+        let luaPathInVSCodeExtension = this.VSCodeExtensionPath + "/debugger/QtAgentUnit.lua";
         return luaPathInVSCodeExtension;
     }
 

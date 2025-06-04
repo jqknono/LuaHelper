@@ -1,0 +1,9 @@
+{
+    "luahelper.test.luaExe": "/titan/agent/titanagent",
+    "luahelper.test.launchArgs": [
+        "-a",
+        "-l",
+        "-u"
+    ],
+    "luahelper.test.logpanel": true
+}

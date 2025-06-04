@@ -2,7 +2,7 @@
     "name": "LuaForQingteng",
     "displayName": "LuaForQingTeng",
     "description": "LuaHelper, Intellisense, Linting, Debugging, Code formatting, High-performance, and more.",
-    "version": "2.2.29",
+    "version": "3.2.29",
     "publisher": "LuaForQingteng",
     "author": {
         "name": "Cecil",
@@ -21,7 +21,10 @@
         "luacheck",
         "lua format",
         "luaformat",
-        "emmylua"
+        "emmylua",
+        "test",
+        "testing",
+        "adapter"
     ],
     "icon": "images/luahelper.png",
     "repository": {
@@ -68,6 +71,16 @@
             {
                 "command": "LuaHelper.setFormatConfig",
                 "title": "LuaHelper: Set Format Config"
+            },
+            {
+                "command": "luahelper.test.debugTest",
+                "title": "Debug Lua Test",
+                "icon": "$(debug-alt)"
+            },
+            {
+                "command": "luahelper.test.runTest",
+                "title": "Run Lua Test",
+                "icon": "$(play)"
             }
         ],
         "snippets": [
@@ -961,6 +974,79 @@
                     "scope": "resource",
                     "type": "boolean",
                     "description": "%luahelper.Warn.CheckFloatEq%"
+                },
+                "luahelper.test.luaExe": {
+                    "description": "%luahelper.test.luaExe%",
+                    "type": "string",
+                    "scope": "resource",
+                    "default": "lua",
+                    "order": 1
+                },
+                "luahelper.test.launchArgs": {
+                    "description": "%luahelper.test.launchArgs%",
+                    "type": "array",
+                    "scope": "resource",
+                    "default": [],
+                    "items": {
+                        "type": "string"
+                    },
+                    "order": 2
+                },
+                "luahelper.test.testGlob": {
+                    "description": "%luahelper.test.testGlob%",
+                    "type": "string",
+                    "scope": "resource",
+                    "default": "**/[tT]est*.lua",
+                    "order": 3
+                },
+                "luahelper.test.testRegex": {
+                    "description": "%luahelper.test.testRegex%",
+                    "type": "string",
+                    "scope": "resource",
+                    "default": "^\\s*function\\s+(?:\\w*:)?(?<test>[tT]est\\w*)\\(\\)(?:.*)$",
+                    "order": 4
+                },
+                "luahelper.test.testEncoding": {
+                    "description": "%luahelper.test.testEncoding%",
+                    "type": "string",
+                    "scope": "resource",
+                    "default": "utf8",
+                    "order": 5
+                },
+                "luahelper.test.decorationRegex": {
+                    "description": "%luahelper.test.decorationRegex%",
+                    "type": "string",
+                    "scope": "resource",
+                    "default": "\\.lua:(?<line>[1-9][0-9]*):(?<message>.*)stack traceback:",
+                    "order": 6
+                },
+                "luahelper.test.logpanel": {
+                    "description": "%luahelper.test.logpanel%",
+                    "type": "boolean",
+                    "scope": "resource",
+                    "default": false,
+                    "order": 7
+                },
+                "luahelper.test.logfile": {
+                    "description": "%luahelper.test.logfile%",
+                    "type": "string",
+                    "scope": "resource",
+                    "default": "",
+                    "order": 8
+                },
+                "luahelper.test.debugPort": {
+                    "description": "%luahelper.test.debugPort%",
+                    "type": "number",
+                    "scope": "resource",
+                    "default": 8818,
+                    "order": 9
+                },
+                "luahelper.test.stopOnEntry": {
+                    "description": "%luahelper.test.stopOnEntry%",
+                    "type": "boolean",
+                    "scope": "resource",
+                    "default": false,
+                    "order": 10
                 }
             }
         },
@@ -996,6 +1082,7 @@
     "dependencies": {
         "await-notify": "1.0.1",
         "client": "0.0.1",
+        "glob": "^8.1.0",
         "iconv-lite": "^0.5.0",
         "path-reader": "^1.1.0",
         "smart-buffer": "^4.0.1",

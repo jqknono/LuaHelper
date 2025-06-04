@@ -17,7 +17,7 @@ import * as Net from 'net';
 import { DataProcessor } from './dataProcessor';
 import { DebugLogger } from '../common/logManager';
 //import { StatusBarManager } from '../common/statusBarManager';
-import { LineBreakpoint, ConditionBreakpoint, LogPoint } from './breakpoint';
+import { LineBreakpoint, ConditionBreakpoint, LogPoint } from './breakPoint';
 import { Tools } from '../common/tools';
 //import { UpdateManager } from './updateManager';
 import { ThreadManager } from '../common/threadManager';
@@ -284,20 +284,28 @@ export class LuaDebugSession extends LoggingDebugSession {
 
         //3. 适配Qingteng Agent
         // 拷贝LuaPanda.lua文件到titan agent目录
-        let LuaPandaContent = fs.readFileSync(Tools.getLuaPathInExtension());
-        let LuaPandaPath = ""
+        let workDir = ""
         if (os.type() === "Windows_NT") {
-            LuaPandaPath = "c:\\program files\\titanagent\\data\\script";
+            workDir = "c:\\program files\\titanagent\\data\\script";
         } else if (os.type() === "Linux") {
-            LuaPandaPath = "/titan/agent/data/script";
+            workDir = "/titan/agent/data/script";
         }
-        if (!fs.existsSync(LuaPandaPath)) {
-            fs.mkdirSync(LuaPandaPath);
+        if (!fs.existsSync(workDir)) {
+            fs.mkdirSync(workDir);
         }
-        LuaPandaPath += "/LuaPanda.lua";
+        let LuaPandaContent = fs.readFileSync(Tools.getLuaPandaPathInExtension());
+        let LuaPandaPath = workDir + "/LuaPanda.lua";
         // write if not exist
         if (!fs.existsSync(LuaPandaPath)) {
             fs.writeFileSync(LuaPandaPath, LuaPandaContent);
+        }
+
+        // 拷贝luaunit.lua文件到titan agent目录
+        let luaunitContent = fs.readFileSync(Tools.getQtAgentUnitPathInExtension());
+        let luaunitPath = workDir + "/QtAgentUnit.lua";
+        // write if not exist
+        if (!fs.existsSync(luaunitPath)) {
+            fs.writeFileSync(luaunitPath, luaunitContent);
         }
 
         this.breakpointsArray = new Array();
