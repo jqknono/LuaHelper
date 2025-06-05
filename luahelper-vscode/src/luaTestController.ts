@@ -690,7 +690,6 @@ export class LuaTestController {
   }
 
   /**
-   * Get test configuration from VS Code settings, based on thirdparty/settings.lua approach
    * Supports custom Lua executable with configurable arguments and environment variables
    */
   private getTestConfig(workspaceFolder: vscode.WorkspaceFolder) {
@@ -700,20 +699,17 @@ export class LuaTestController {
     );
 
     return {
-      // Test discovery settings - same as thirdparty/settings.lua
-      testGlob: config.get<string>("testGlob") || "**/[tT]est*.lua",
+      testGlob: config.get<string>("testGlob") || "**/qttest*.lua",
       testRegex: config.get<string>("testRegex")
         ? new RegExp(config.get<string>("testRegex")!, "gm")
         : /^\s*function\s+(?:[a-zA-Z][a-zA-Z0-9]*:)?([tT]est[a-zA-Z0-9]*)\(\)(?:.*)$/gm,
       testEncoding: config.get<string>("testEncoding") || "utf8",
 
-      // Execution settings - same as thirdparty/settings.lua
-      luaExe: config.get<string>("luaExe") || "lua",
+      luaExe: config.get<string>("luaExe") || "/titan/agent/titanagent",
 
       // Custom lua arguments for embedded lua executables
-      launchArgs: config.get<string[]>("launchArgs") || [],
+      launchArgs: config.get<string[]>("launchArgs") || ["-a", "-l", "-u"],
 
-      // Error decoration regex - same as thirdparty/settings.lua
       decorationRegex: config.get<string>("decorationRegex")
         ? new RegExp(config.get<string>("decorationRegex")!, "gm")
         : /\.lua:([1-9][0-9]*):(.*)stack traceback:/gm,
