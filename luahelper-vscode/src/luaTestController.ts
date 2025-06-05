@@ -53,6 +53,8 @@ export class LuaTestController {
   private watchedFiles = new Map<string, vscode.FileSystemWatcher>();
   private context: vscode.ExtensionContext;
   private filesCopied: boolean = false; // 标记是否已经拷贝过文件
+  private outputChannel: vscode.OutputChannel; // 添加输出面板
+  private testOutputChannel: vscode.OutputChannel; // 专门用于测试输出的通道
 
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
@@ -61,6 +63,34 @@ export class LuaTestController {
       "Lua Tests"
     );
     context.subscriptions.push(this.testController);
+
+    // 创建诊断日志输出面板
+    this.outputChannel = vscode.window.createOutputChannel(
+      "LuaHelper Test Controller"
+    );
+    context.subscriptions.push(this.outputChannel);
+
+    // 创建专门的测试输出面板
+    this.testOutputChannel = vscode.window.createOutputChannel(
+      "LuaHelper Test Output"
+    );
+    context.subscriptions.push(this.testOutputChannel);
+
+    // 初始化日志，总是显示
+    this.outputChannel.appendLine("=== LuaTestController Initialized ===");
+    this.outputChannel.appendLine(`Time: ${new Date().toISOString()}`);
+
+    // 测试输出通道初始化
+    this.testOutputChannel.appendLine("=== Lua Test Output Channel ===");
+    this.testOutputChannel.appendLine(
+      "This channel displays test stdout and stderr output"
+    );
+    this.testOutputChannel.appendLine(
+      `Initialized at: ${new Date().toISOString()}`
+    );
+    this.testOutputChannel.appendLine(
+      "=========================================="
+    );
 
     // 设置扩展路径供Tools使用
     Tools.SetVSCodeExtensionPath(context.extensionPath);
@@ -105,6 +135,47 @@ export class LuaTestController {
         "luahelper.test.runTest",
         this.runTestCommand.bind(this)
       )
+    );
+
+    // 添加测试输出面板的命令
+    this.context.subscriptions.push(
+      vscode.commands.registerCommand(
+        "luahelper.test.testOutput",
+        this.testOutputCommand.bind(this)
+      )
+    );
+  }
+
+  private async testOutputCommand() {
+    // 测试输出面板功能
+    this.outputChannel.appendLine("=== Output Panel Test ===");
+    this.outputChannel.appendLine(
+      `Test message at: ${new Date().toISOString()}`
+    );
+
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (workspaceFolder) {
+      const testConfig = this.getTestConfig(workspaceFolder);
+      this.outputChannel.appendLine(`LogPanel config: ${testConfig.logPanel}`);
+    } else {
+      this.outputChannel.appendLine("No workspace folder found");
+    }
+
+    // 显示输出面板
+    this.outputChannel.show();
+
+    // 同时测试测试输出通道
+    this.testOutputChannel.appendLine("=== Test Output Channel Test ===");
+    this.testOutputChannel.appendLine(
+      `Test timestamp: ${new Date().toISOString()}`
+    );
+    this.testOutputChannel.appendLine(
+      "This is where test stdout/stderr will appear"
+    );
+    this.testOutputChannel.appendLine("=====================================");
+
+    vscode.window.showInformationMessage(
+      "Test messages sent to both output channels"
     );
   }
 
@@ -152,7 +223,7 @@ export class LuaTestController {
     const testConfig = this.getTestConfig(workspaceFolder);
 
     // Debug logging
-    console.log(
+    this.log(
       `[LuaTestController] Discovering tests in ${workspaceFolder.name} with pattern: ${testConfig.testGlob}`
     );
 
@@ -161,7 +232,7 @@ export class LuaTestController {
         workspaceFolder.uri.fsPath,
         testConfig.testGlob
       );
-      console.log(
+      this.log(
         `[LuaTestController] Found ${files.length} test files:`,
         files.map((f) => path.relative(workspaceFolder.uri.fsPath, f))
       );
@@ -175,7 +246,7 @@ export class LuaTestController {
         );
       }
     } catch (error) {
-      console.error(`[LuaTestController] Error discovering tests:`, error);
+      this.logError(`[LuaTestController] Error discovering tests:`, error);
       // Ignore error and continue
     }
   }
@@ -198,7 +269,7 @@ export class LuaTestController {
         return files.map((file) => file.fsPath);
       }
     } catch (error) {
-      console.warn(
+      this.logWarn(
         `[LuaTestController] Error using workspace.findFiles, falling back to manual search:`,
         error
       );
@@ -252,7 +323,7 @@ export class LuaTestController {
         process.env.NODE_ENV === "development" ||
         vscode.workspace.getConfiguration("luahelper.test").get("debug")
       ) {
-        console.log(
+        this.log(
           `[LuaTestController] Glob Pattern: ${pattern} -> File: ${filePath} -> Match: ${matches}`
         );
       }
@@ -260,7 +331,7 @@ export class LuaTestController {
       return matches;
     } catch (error) {
       // If glob pattern matching fails, fall back to simple string matching
-      console.warn(
+      this.logWarn(
         `[LuaTestController] Invalid glob pattern: ${pattern}`,
         error
       );
@@ -322,7 +393,7 @@ export class LuaTestController {
         this.testController.items.add(fileItem);
 
         // 当发现测试用例时，拷贝必要的调试文件
-        console.log(
+        this.log(
           `[LuaTestController] Found ${fileItem.children.size} test(s) in ${filePath}, copying required files...`
         );
         this.copyRequiredFiles();
@@ -489,8 +560,8 @@ export class LuaTestController {
 
       // Print the debug command for debugging
       const commandStr = `${testConfig.luaExe} ${args.join(" ")}`;
-      console.log(`[LuaTestController] Debug command: ${commandStr}`);
-      console.log(
+      this.log(`[LuaTestController] Debug command: ${commandStr}`);
+      this.log(
         `[LuaTestController] Debug environment: TEST_FUNCTION=${testName}`
       );
 
@@ -557,8 +628,19 @@ export class LuaTestController {
 
       // Print the execution command for debugging
       const commandStr = `${testConfig.luaExe} ${args.join(" ")}`;
-      console.log(`[LuaTestController] Executing command: ${commandStr}`);
-      console.log(`[LuaTestController] Environment: TEST_FUNCTION=${testName}`);
+      this.log(`[LuaTestController] Executing command: ${commandStr}`);
+      this.log(`[LuaTestController] Environment: TEST_FUNCTION=${testName}`);
+
+      // 在测试输出通道中记录测试开始
+      this.testOutputChannel.appendLine(
+        `\n=== Test Execution: ${testName} ===`
+      );
+      this.testOutputChannel.appendLine(`File: ${path.basename(filePath)}`);
+      this.testOutputChannel.appendLine(`Command: ${commandStr}`);
+      this.testOutputChannel.appendLine(`Time: ${new Date().toISOString()}`);
+      this.testOutputChannel.appendLine(
+        "----------------------------------------"
+      );
 
       // Record command execution for display in VS Code Test UI
       run.appendOutput(`━━━ Test Execution ━━━\r\n`, undefined, test);
@@ -581,24 +663,33 @@ export class LuaTestController {
       const stdout = String(lua.stdout || "");
 
       // Add debug logging to understand the output
-      console.log(
-        `[LuaTestController] Test execution completed for ${testName}`
-      );
-      console.log(`[LuaTestController] Exit code: ${lua.status}`);
-      console.log(`[LuaTestController] STDOUT:`, stdout);
-      console.log(`[LuaTestController] STDERR:`, stderr);
+      this.log(`[LuaTestController] Test execution completed for ${testName}`);
+      this.log(`[LuaTestController] Exit code: ${lua.status}`);
+      this.log(`[LuaTestController] STDOUT:`, stdout);
+      this.log(`[LuaTestController] STDERR:`, stderr);
 
-      // // Record test output for display in VS Code Test UI
-      // if (stdout.length > 0) {
-      //   // Clean up stdout output - normalize line endings, trim, and fix alignment
-      //   const cleanStdout = this.formatOutput(stdout);
-      //   run.appendOutput(`━━━ STDOUT ━━━\n`, undefined, test);
-      //   run.appendOutput(`${cleanStdout}\n`, undefined, test);
-      //   run.appendOutput(`━━━━━━━━━━━━━━\n\n`, undefined, test);
-      // }
+      // 将stdout和stderr输出到专门的测试输出通道
+      if (stdout.length > 0) {
+        this.testOutputChannel.appendLine("=== STDOUT ===");
+        this.testOutputChannel.appendLine(stdout);
+        this.testOutputChannel.appendLine("============");
+      }
 
       if (stderr.length > 0) {
-        console.error("Failed to execute test file", stderr);
+        this.testOutputChannel.appendLine("=== STDERR ===");
+        this.testOutputChannel.appendLine(stderr);
+        this.testOutputChannel.appendLine("============");
+      }
+
+      // 输出测试结果到测试通道
+      this.testOutputChannel.appendLine(`Exit Code: ${lua.status}`);
+      this.testOutputChannel.appendLine(`Duration: ${duration}ms`);
+      this.testOutputChannel.appendLine(
+        "========================================\n"
+      );
+
+      if (stderr.length > 0) {
+        this.logError("Failed to execute test file", stderr);
         const cleanStderr = this.formatOutput(stderr);
         run.appendOutput(`━━━ ERROR ━━━\r\n`, undefined, test);
         run.appendOutput(
@@ -620,28 +711,31 @@ export class LuaTestController {
           stdout.match(new RegExp(`${testName}.*PASSED`, "i")) ||
           stdout.match(/\bOK\b/));
 
-      console.log(
-        `[LuaTestController] Test result evaluation for ${testName}:`
-      );
-      console.log(
+      this.log(`[LuaTestController] Test result evaluation for ${testName}:`);
+      this.log(
         `[LuaTestController] - Pattern "Test '${testName}' PASSED": ${!!stdout.match(
           new RegExp(`Test\\s+'${testName}'\\s+PASSED`, "i")
         )}`
       );
-      console.log(
+      this.log(
         `[LuaTestController] - Pattern "${testName}.*PASSED": ${!!stdout.match(
           new RegExp(`${testName}.*PASSED`, "i")
         )}`
       );
-      console.log(
+      this.log(
         `[LuaTestController] - Contains 'OK': ${!!stdout.match(/\bOK\b/)}`
       );
-      console.log(
+      this.log(
         `[LuaTestController] - Final result: ${passed ? "PASSED" : "FAILED"}`
       );
 
+      // 在测试输出通道中记录最终结果
+      this.testOutputChannel.appendLine(
+        `Result: ${passed ? "✅ PASSED" : "❌ FAILED"}`
+      );
+
       if (passed) {
-        console.log(`[LuaTestController] Marking test ${testName} as PASSED`);
+        this.log(`[LuaTestController] Marking test ${testName} as PASSED`);
         run.appendOutput(`━━━ RESULT ━━━\r\n`, undefined, test);
         run.appendOutput(`✅ Test "${testName}" PASSED\r\n`, undefined, test);
         run.appendOutput(`Duration: ${duration}ms\r\n`, undefined, test);
@@ -682,6 +776,12 @@ export class LuaTestController {
       }
     } catch (error) {
       const errorMessage = `Test execution failed: ${error}`;
+
+      // 记录异常到测试输出通道
+      this.testOutputChannel.appendLine("=== EXCEPTION ===");
+      this.testOutputChannel.appendLine(errorMessage);
+      this.testOutputChannel.appendLine("===============");
+
       run.appendOutput(`━━━ EXCEPTION ━━━\r\n`, undefined, test);
       run.appendOutput(`💥 ${errorMessage}\r\n`, undefined, test);
       run.appendOutput(`━━━━━━━━━━━━━━━━━\r\n`, undefined, test);
@@ -693,10 +793,7 @@ export class LuaTestController {
    * Supports custom Lua executable with configurable arguments and environment variables
    */
   private getTestConfig(workspaceFolder: vscode.WorkspaceFolder) {
-    const config = vscode.workspace.getConfiguration(
-      "luahelper.test",
-      workspaceFolder.uri
-    );
+    const config = vscode.workspace.getConfiguration("luahelper.test");
 
     return {
       testGlob: config.get<string>("testGlob") || "**/qttest*.lua",
@@ -719,6 +816,9 @@ export class LuaTestController {
 
       // Debug Port
       debugPort: config.get<number>("debugPort") || 8818,
+
+      // Log Panel设置
+      logPanel: config.get<boolean>("logPanel") || true,
     };
   }
 
@@ -740,7 +840,7 @@ export class LuaTestController {
         workDir = "/titan/agent/data/script";
       } else {
         // 其他系统暂不处理
-        console.log(`[LuaTestController] Unsupported OS type: ${os.type()}`);
+        this.log(`[LuaTestController] Unsupported OS type: ${os.type()}`);
         return;
       }
 
@@ -748,9 +848,9 @@ export class LuaTestController {
       if (!fs.existsSync(workDir)) {
         try {
           fs.mkdirSync(workDir, { recursive: true });
-          console.log(`[LuaTestController] Created directory: ${workDir}`);
+          this.log(`[LuaTestController] Created directory: ${workDir}`);
         } catch (error) {
-          console.error(
+          this.logError(
             `[LuaTestController] Failed to create directory ${workDir}:`,
             error
           );
@@ -766,16 +866,16 @@ export class LuaTestController {
             Tools.getLuaPandaPathInExtension()
           );
           fs.writeFileSync(luaPandaPath, luaPandaContent);
-          console.log(
+          this.log(
             `[LuaTestController] Copied LuaPanda.lua to ${luaPandaPath}`
           );
         } else {
-          console.log(
+          this.log(
             `[LuaTestController] LuaPanda.lua already exists at ${luaPandaPath}`
           );
         }
       } catch (error) {
-        console.error(
+        this.logError(
           `[LuaTestController] Failed to copy LuaPanda.lua:`,
           error
         );
@@ -789,16 +889,16 @@ export class LuaTestController {
             Tools.getQtAgentUnitPathInExtension()
           );
           fs.writeFileSync(qtAgentUnitPath, qtAgentUnitContent);
-          console.log(
+          this.log(
             `[LuaTestController] Copied QtAgentUnit.lua to ${qtAgentUnitPath}`
           );
         } else {
-          console.log(
+          this.log(
             `[LuaTestController] QtAgentUnit.lua already exists at ${qtAgentUnitPath}`
           );
         }
       } catch (error) {
-        console.error(
+        this.logError(
           `[LuaTestController] Failed to copy QtAgentUnit.lua:`,
           error
         );
@@ -806,7 +906,7 @@ export class LuaTestController {
 
       this.filesCopied = true; // 标记已经拷贝过文件
     } catch (error) {
-      console.error(`[LuaTestController] Error in copyRequiredFiles:`, error);
+      this.logError(`[LuaTestController] Error in copyRequiredFiles:`, error);
     }
   }
 
@@ -815,8 +915,83 @@ export class LuaTestController {
     return output;
   }
 
+  /**
+   * 记录诊断日志到控制台和输出面板（如果启用）
+   */
+  private log(message: string, ...args: any[]): void {
+    // 始终记录到控制台
+    console.log(message, ...args);
+
+    // 检查是否应该写入输出面板
+    let shouldLogToPanel = false;
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (workspaceFolder) {
+      const testConfig = this.getTestConfig(workspaceFolder);
+      shouldLogToPanel = testConfig.logPanel;
+    }
+
+    // 如果启用了logpanel，则写入输出面板
+    if (shouldLogToPanel) {
+      const fullMessage =
+        args.length > 0 ? `${message} ${args.join(" ")}` : message;
+      this.outputChannel.appendLine(`[LOG] ${fullMessage}`);
+    }
+  }
+
+  /**
+   * 记录错误日志到控制台和输出面板（如果启用）
+   */
+  private logError(message: string, ...args: any[]): void {
+    // 始终记录到控制台
+    console.error(message, ...args);
+
+    // 检查是否应该写入输出面板
+    let shouldLogToPanel = false;
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (workspaceFolder) {
+      const testConfig = this.getTestConfig(workspaceFolder);
+      shouldLogToPanel = testConfig.logPanel;
+    }
+
+    // 如果启用了logpanel，则写入输出面板
+    if (shouldLogToPanel) {
+      const fullMessage =
+        args.length > 0
+          ? `ERROR: ${message} ${args.join(" ")}`
+          : `ERROR: ${message}`;
+      this.outputChannel.appendLine(`[ERROR] ${fullMessage}`);
+    }
+  }
+
+  /**
+   * 记录警告日志到控制台和输出面板（如果启用）
+   */
+  private logWarn(message: string, ...args: any[]): void {
+    // 始终记录到控制台
+    console.warn(message, ...args);
+
+    // 检查是否应该写入输出面板
+    let shouldLogToPanel = false;
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (workspaceFolder) {
+      const testConfig = this.getTestConfig(workspaceFolder);
+      shouldLogToPanel = testConfig.logPanel;
+    }
+
+    // 如果启用了logpanel，则写入输出面板
+    if (shouldLogToPanel) {
+      const fullMessage =
+        args.length > 0
+          ? `WARN: ${message} ${args.join(" ")}`
+          : `WARN: ${message}`;
+      this.outputChannel.appendLine(`[WARN] ${fullMessage}`);
+    }
+  }
+
   dispose() {
     this.watchedFiles.forEach((watcher) => watcher.dispose());
     this.testController.dispose();
+    this.outputChannel.dispose(); // 清理诊断日志输出面板
+    this.testOutputChannel.dispose(); // 清理测试输出面板
   }
 }

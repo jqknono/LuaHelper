@@ -2,7 +2,7 @@
     "name": "LuaForQingteng",
     "displayName": "LuaForQingTeng",
     "description": "LuaHelper, Intellisense, Linting, Debugging, Code formatting, High-performance, and more.",
-    "version": "4.2.29",
+    "version": "5.2.29",
     "publisher": "LuaForQingteng",
     "author": {
         "name": "Cecil",
@@ -1028,7 +1028,7 @@
                     "description": "%luahelper.test.logpanel%",
                     "type": "boolean",
                     "scope": "resource",
-                    "default": false,
+                    "default": true,
                     "order": 7
                 },
                 "luahelper.test.logfile": {
