@@ -28,7 +28,6 @@
  *      * Arguments passed before the test file path
  *      * For embedded Lua: ["-a", "-l", "-u"]
  *      * For standard Lua: []
- *    - luahelper.test.decorationRegex: Pattern for parsing error locations
  *    - luahelper.test.stopOnEntry: Whether to stop on entry when debugging
  *
  * Usage:
@@ -79,18 +78,6 @@ export class LuaTestController {
     // 初始化日志，总是显示
     this.outputChannel.appendLine("=== LuaTestController Initialized ===");
     this.outputChannel.appendLine(`Time: ${new Date().toISOString()}`);
-
-    // 测试输出通道初始化
-    this.testOutputChannel.appendLine("=== Lua Test Output Channel ===");
-    this.testOutputChannel.appendLine(
-      "This channel displays test stdout and stderr output"
-    );
-    this.testOutputChannel.appendLine(
-      `Initialized at: ${new Date().toISOString()}`
-    );
-    this.testOutputChannel.appendLine(
-      "=========================================="
-    );
 
     // 设置扩展路径供Tools使用
     Tools.SetVSCodeExtensionPath(context.extensionPath);
@@ -163,16 +150,6 @@ export class LuaTestController {
 
     // 显示输出面板
     this.outputChannel.show();
-
-    // 同时测试测试输出通道
-    this.testOutputChannel.appendLine("=== Test Output Channel Test ===");
-    this.testOutputChannel.appendLine(
-      `Test timestamp: ${new Date().toISOString()}`
-    );
-    this.testOutputChannel.appendLine(
-      "This is where test stdout/stderr will appear"
-    );
-    this.testOutputChannel.appendLine("=====================================");
 
     vscode.window.showInformationMessage(
       "Test messages sent to both output channels"
@@ -631,42 +608,24 @@ export class LuaTestController {
       this.log(`[LuaTestController] Executing command: ${commandStr}`);
       this.log(`[LuaTestController] Environment: TEST_FUNCTION=${testName}`);
 
-      // 在测试输出通道中记录测试开始
-      this.testOutputChannel.appendLine(
-        `\n=== Test Execution: ${testName} ===`
-      );
-      this.testOutputChannel.appendLine(`File: ${path.basename(filePath)}`);
-      this.testOutputChannel.appendLine(`Command: ${commandStr}`);
-      this.testOutputChannel.appendLine(`Time: ${new Date().toISOString()}`);
-      this.testOutputChannel.appendLine(
-        "----------------------------------------"
-      );
-
-      // Record command execution for display in VS Code Test UI
-      run.appendOutput(`━━━ Test Execution ━━━\r\n`, undefined, test);
-      run.appendOutput(`Command: ${commandStr}\r\n`, undefined, test);
-      run.appendOutput(
-        `Environment: TEST_FUNCTION=${testName}\r\n`,
-        undefined,
-        test
-      );
-      run.appendOutput(`━━━━━━━━━━━━━━━━━━━━━━━\r\n`, undefined, test);
-
       // Execute with custom arguments and environment variables
       const lua = cp.spawnSync(testConfig.luaExe, args, {
         cwd: workspaceFolder.uri.fsPath,
         env: env,
+        encoding: "utf8", // 确保正确的编码
+        timeout: 30000, // 30秒超时
       });
 
       const duration = Date.now() - startTime;
       const stderr = String(lua.stderr || "");
       const stdout = String(lua.stdout || "");
+      const exitCode = lua.status;
+      const signal = lua.signal;
 
       // Add debug logging to understand the output
       this.log(`[LuaTestController] Test execution completed for ${testName}`);
-      this.log(`[LuaTestController] Exit code: ${lua.status}`);
-      this.log(`[LuaTestController] STDOUT:`, stdout);
-      this.log(`[LuaTestController] STDERR:`, stderr);
+      this.log(`[LuaTestController] Exit code: ${exitCode}`);
+      this.log(`[LuaTestController] Signal: ${signal}`);
 
       // 将stdout和stderr输出到专门的测试输出通道
       if (stdout.length > 0) {
@@ -681,35 +640,51 @@ export class LuaTestController {
         this.testOutputChannel.appendLine("============");
       }
 
-      // 输出测试结果到测试通道
-      this.testOutputChannel.appendLine(`Exit Code: ${lua.status}`);
-      this.testOutputChannel.appendLine(`Duration: ${duration}ms`);
-      this.testOutputChannel.appendLine(
-        "========================================\n"
-      );
+      // Enhanced error handling - 区分系统错误和测试失败
+      // 只有严重的系统错误（如信号终止）才被视为系统错误
+      const hasSevereSystemError = signal !== null && signal !== "SIGCHLD";
 
-      if (stderr.length > 0) {
-        this.logError("Failed to execute test file", stderr);
-        const cleanStderr = this.formatOutput(stderr);
-        run.appendOutput(`━━━ ERROR ━━━\r\n`, undefined, test);
-        run.appendOutput(
-          `Test execution failed:\r\n${cleanStderr}\r\n`,
-          undefined,
-          test
+      if (hasSevereSystemError) {
+        this.logError("Test execution terminated by system signal", {
+          exitCode,
+          signal,
+          stderr: stderr.substring(0, 500), // 限制日志长度
+          stdout: stdout.substring(0, 500),
+        });
+
+        // 仅输出错误信息到test result窗口
+        run.appendOutput(`━━━ SYSTEM ERROR ━━━\r\n`, undefined, test);
+        run.appendOutput(`Signal: ${signal}\r\n`, undefined, test);
+        run.appendOutput(`Exit Code: ${exitCode}\r\n`, undefined, test);
+
+        if (stderr.length > 0) {
+          run.appendOutput(`STDERR:\r\n${stderr}\r\n`, undefined, test);
+        }
+
+        // 创建系统错误消息
+        const systemError = new vscode.TestMessage(
+          `Test process terminated by system signal: ${signal}\nExit Code: ${exitCode}\n\nThis may indicate a severe error in the test or Lua runtime.`
         );
-        run.appendOutput(`━━━━━━━━━━━━━\r\n`, undefined, test);
-        run.failed(test, [new vscode.TestMessage(stderr)], duration);
+
+        run.errored(test, [systemError], duration);
         return;
       }
 
-      // Check for test passed pattern - look for "Test 'testName' PASSED" format
-      // Changed to match the specific pattern: testname.*PASSED
+      // Check for test passed pattern - 基于输出内容判断测试结果
       const passed =
         stdout &&
         stdout.length > 0 &&
         (stdout.match(new RegExp(`Test\\s+'${testName}'\\s+PASSED`, "i")) ||
           stdout.match(new RegExp(`${testName}.*PASSED`, "i")) ||
           stdout.match(/\bOK\b/));
+
+      // Check for explicit failure patterns
+      const explicitFailure =
+        stdout &&
+        stdout.length > 0 &&
+        (stdout.match(/\bFAILED\b/) ||
+          stdout.match(/assertion.*failed/i) ||
+          stdout.match(/test.*failed/i));
 
       this.log(`[LuaTestController] Test result evaluation for ${testName}:`);
       this.log(
@@ -725,68 +700,228 @@ export class LuaTestController {
       this.log(
         `[LuaTestController] - Contains 'OK': ${!!stdout.match(/\bOK\b/)}`
       );
+      this.log(`[LuaTestController] - Contains 'FAILED': ${!!explicitFailure}`);
+      this.log(`[LuaTestController] - Exit Code: ${exitCode}`);
       this.log(
         `[LuaTestController] - Final result: ${passed ? "PASSED" : "FAILED"}`
       );
 
-      // 在测试输出通道中记录最终结果
-      this.testOutputChannel.appendLine(
-        `Result: ${passed ? "✅ PASSED" : "❌ FAILED"}`
-      );
-
       if (passed) {
         this.log(`[LuaTestController] Marking test ${testName} as PASSED`);
-        run.appendOutput(`━━━ RESULT ━━━\r\n`, undefined, test);
-        run.appendOutput(`✅ Test "${testName}" PASSED\r\n`, undefined, test);
-        run.appendOutput(`Duration: ${duration}ms\r\n`, undefined, test);
-        run.appendOutput(`━━━━━━━━━━━━━━\r\n`, undefined, test);
+        // 测试通过时只显示简单的成功信息
+        run.appendOutput(
+          `✅ Test "${testName}" PASSED (${duration}ms)\r\n`,
+          undefined,
+          test
+        );
         run.passed(test, duration);
       } else {
-        // Parse error output for line numbers and messages using decorationRegex
-        const messages: vscode.TestMessage[] = [];
-        const match = testConfig.decorationRegex.exec(stdout);
+        // 测试未通过 - 仅输出error和fail相关信息到test result窗口
+        const failureMessages = this.parseErrorMessages(
+          stdout,
+          test,
+          workspaceFolder,
+          run
+        );
 
-        if (match && match[1] && match[2]) {
-          const line = Number(match[1]);
-          if (Number.isSafeInteger(line)) {
-            const message = (match[2] || "")
-              .trim()
-              .replace(/\r\n/g, "")
-              .replace(/\n/g, " ");
-            const testMessage = new vscode.TestMessage(message);
-            if (test.range && test.uri) {
-              testMessage.location = new vscode.Location(
-                test.uri,
-                new vscode.Position(Math.max(0, line - 1), 0)
-              );
-            }
-            messages.push(testMessage);
+        if (failureMessages.length === 0) {
+          // 创建通用失败消息，包含文件路径和行号信息
+          let failureReason = "No 'PASSED' or 'OK' pattern found in output";
+          if (explicitFailure) {
+            failureReason = "Test explicitly marked as FAILED";
+          } else if (exitCode !== 0 && exitCode !== 1) {
+            failureReason = `Unexpected exit code: ${exitCode}`;
           }
+
+          // 获取测试文件路径
+          const testFilePath = test.uri?.fsPath || filePath;
+          const relativePath = path.relative(workspaceFolder.uri.fsPath, testFilePath);
+          
+          // 创建包含文件路径和行号的错误消息
+          const genericFailure = new vscode.TestMessage(
+            `测试失败: ${testName}\n文件: ${relativePath}\n原因: ${failureReason}`
+          );
+          
+          // 如果测试项有位置信息，设置错误位置
+          if (test.range && test.uri) {
+            genericFailure.location = new vscode.Location(
+              test.uri,
+              test.range.start
+            );
+          }
+          
+          failureMessages.push(genericFailure);
         }
 
-        if (messages.length === 0) {
-          messages.push(new vscode.TestMessage(stdout || "Test failed"));
-        }
-
-        run.appendOutput(`━━━ RESULT ━━━\r\n`, undefined, test);
-        run.appendOutput(`❌ Test "${testName}" FAILED\r\n`, undefined, test);
-        run.appendOutput(`Duration: ${duration}ms\r\n`, undefined, test);
-        run.appendOutput(`━━━━━━━━━━━━━━\r\n`, undefined, test);
-        run.failed(test, messages, duration);
+        // 只输出失败结果和错误信息
+        run.appendOutput(
+          `❌ Test "${testName}" FAILED (${duration}ms)\r\n`,
+          undefined,
+          test
+        );
+        run.failed(test, failureMessages, duration);
       }
     } catch (error) {
       const errorMessage = `Test execution failed: ${error}`;
-
-      // 记录异常到测试输出通道
-      this.testOutputChannel.appendLine("=== EXCEPTION ===");
-      this.testOutputChannel.appendLine(errorMessage);
-      this.testOutputChannel.appendLine("===============");
-
-      run.appendOutput(`━━━ EXCEPTION ━━━\r\n`, undefined, test);
       run.appendOutput(`💥 ${errorMessage}\r\n`, undefined, test);
-      run.appendOutput(`━━━━━━━━━━━━━━━━━\r\n`, undefined, test);
       run.errored(test, new vscode.TestMessage(errorMessage));
     }
+  }
+
+  /**
+   * 解析错误消息，尝试提取错误位置和详细信息
+   * 只关注stdout，忽略stderr
+   */
+  private parseErrorMessages(
+    stdout: string,
+    test: vscode.TestItem,
+    workspaceFolder: vscode.WorkspaceFolder,
+    run: vscode.TestRun
+  ): vscode.TestMessage[] {
+    const messages: vscode.TestMessage[] = [];
+
+    this.log(
+      `[LuaTestController] Parsing stdout for errors in file ${test.uri?.fsPath}`
+    );
+
+    // 只输出QtAgentUnit的ERROR和FAIL日志到test results面板
+    const qtAgentErrorLogs = stdout.match(
+      /\[[\d:]+\]\s*\[QtAgentUnit\]\s*\[(ERROR|FAIL|FAILURE)\]\s*(.+)/gm
+    );
+    if (qtAgentErrorLogs && qtAgentErrorLogs.length > 0) {
+      run.appendOutput(`━━━ Error Details ━━━\r\n`, undefined, test);
+      for (const log of qtAgentErrorLogs) {
+        run.appendOutput(`${log}\r\n`, undefined, test);
+      }
+      run.appendOutput(`━━━━━━━━━━━━━━━━━━━━━\r\n`, undefined, test);
+    }
+
+    // Parse QtAgentUnit.lua ERROR and FAIL messages
+    const qtErrorRegex =
+      /\[[\d:]+\]\s*\[QtAgentUnit\]\s*\[(ERROR|FAIL|FAILURE)\]\s*(.+)/gm;
+    let qtMatch;
+    while ((qtMatch = qtErrorRegex.exec(stdout)) !== null) {
+      const logLevel = qtMatch[1].trim();
+      const message = qtMatch[2].trim();
+
+      if (message && message.length > 0) {
+        // Try to extract location information from the message
+        const locationMatch = message.match(/\[([^:\s]+\.lua):(\d+)\]/);
+
+        if (locationMatch) {
+          const filename = locationMatch[1].trim();
+          const lineNumber = Number(locationMatch[2]);
+
+          if (Number.isSafeInteger(lineNumber) && lineNumber > 0) {
+            // Create detailed error message with filename, line number and original message
+            const testMessage = new vscode.TestMessage(
+              `错误位置: ${filename} 第${lineNumber}行\n错误级别: ${logLevel}\n原始信息: ${message}`
+            );
+
+            // Determine the file URI
+            let errorFileUri: vscode.Uri;
+            if (path.isAbsolute(filename)) {
+              errorFileUri = vscode.Uri.file(filename);
+            } else {
+              errorFileUri = vscode.Uri.joinPath(workspaceFolder.uri, filename);
+              if (!fs.existsSync(errorFileUri.fsPath) && test.uri) {
+                errorFileUri = test.uri;
+              }
+            }
+
+            testMessage.location = new vscode.Location(
+              errorFileUri,
+              new vscode.Position(Math.max(0, lineNumber - 1), 0)
+            );
+
+            messages.push(testMessage);
+            this.log(
+              `[LuaTestController] Found QtAgentUnit error with location: ${filename}:${lineNumber}, message: ${message}`
+            );
+          }
+        }
+      }
+    }
+
+    // If no specific errors found, look for general error and fail patterns
+    if (messages.length === 0) {
+      const fullOutput = stdout.trim();
+      if (fullOutput.length > 0) {
+        this.log(
+          `[LuaTestController] No specific errors found, looking for general error patterns`
+        );
+
+        // 只查找包含error或fail关键词的行
+        const lines = fullOutput
+          .split("\n")
+          .filter((line) => line.trim().length > 0);
+        const errorLines = lines.filter(
+          (line) =>
+            line.toLowerCase().includes("error") ||
+            line.toLowerCase().includes("fail") ||
+            line.toLowerCase().includes("assertion")
+        );
+
+        if (errorLines.length == 0) {
+          // 没有找到明确的错误信息，创建包含位置信息的失败消息
+          const testFilePath = test.uri?.fsPath;
+          if (testFilePath) {
+            const relativePath = path.relative(workspaceFolder.uri.fsPath, testFilePath);
+            const failureMessage = new vscode.TestMessage(
+              `测试失败，无具体错误信息\n文件: ${relativePath}\n测试函数: ${test.label}`
+            );
+            
+            // 如果测试项有位置信息，设置错误位置
+            if (test.range && test.uri) {
+              failureMessage.location = new vscode.Location(
+                test.uri,
+                test.range.start
+              );
+            }
+            
+            messages.push(failureMessage);
+          } else {
+            // 如果没有文件路径信息，使用原来的简单消息
+            messages.push(
+              new vscode.TestMessage("Test failed with no specific error message")
+            );
+          }
+        } else {
+          // 找到了包含错误关键词的行，创建包含位置信息的错误消息
+          const testFilePath = test.uri?.fsPath;
+          if (testFilePath) {
+            const relativePath = path.relative(workspaceFolder.uri.fsPath, testFilePath);
+            
+            // 将所有错误行合并为一个消息
+            const errorText = errorLines.join('\n');
+            const failureMessage = new vscode.TestMessage(
+              `测试失败:\n文件: ${relativePath}\n测试函数: ${test.label}\n错误信息:\n${errorText}`
+            );
+            
+            // 如果测试项有位置信息，设置错误位置
+            if (test.range && test.uri) {
+              failureMessage.location = new vscode.Location(
+                test.uri,
+                test.range.start
+              );
+            }
+            
+            messages.push(failureMessage);
+          } else {
+            // 如果没有文件路径信息，使用错误行内容创建消息
+            const errorText = errorLines.join('\n');
+            messages.push(
+              new vscode.TestMessage(`Test failed with errors:\n${errorText}`)
+            );
+          }
+        }
+      }
+    }
+
+    this.log(
+      `[LuaTestController] Parsed ${messages.length} error messages from stdout`
+    );
+    return messages;
   }
 
   /**
@@ -806,10 +941,6 @@ export class LuaTestController {
 
       // Custom lua arguments for embedded lua executables
       launchArgs: config.get<string[]>("launchArgs") || ["-a", "-l", "-u"],
-
-      decorationRegex: config.get<string>("decorationRegex")
-        ? new RegExp(config.get<string>("decorationRegex")!, "gm")
-        : /\.lua:([1-9][0-9]*):(.*)stack traceback:/gm,
 
       // Debug settings (for standard lua debugger)
       stopOnEntry: config.get<boolean>("stopOnEntry") || false,
@@ -908,11 +1039,6 @@ export class LuaTestController {
     } catch (error) {
       this.logError(`[LuaTestController] Error in copyRequiredFiles:`, error);
     }
-  }
-
-  private formatOutput(output: string): string {
-    // 直接返回原始输出，不做任何格式化处理
-    return output;
   }
 
   /**

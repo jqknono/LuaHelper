@@ -2,7 +2,7 @@
     "name": "LuaForQingteng",
     "displayName": "LuaForQingTeng",
     "description": "LuaHelper, Intellisense, Linting, Debugging, Code formatting, High-performance, and more.",
-    "version": "5.2.29",
+    "version": "6.2.29",
     "publisher": "LuaForQingteng",
     "author": {
         "name": "Cecil",
@@ -983,18 +983,12 @@
                     "order": 1
                 },
                 "luahelper.test.launchArgs": {
-                    "description": "%luahelper.test.launchArgs%",
                     "type": "array",
-                    "scope": "resource",
-                    "default": [
-                        "-a",
-                        "-l",
-                        "-u"
-                    ],
                     "items": {
                         "type": "string"
                     },
-                    "order": 2
+                    "default": ["-a", "-l", "-u"],
+                    "description": "%luahelper.test.launchArgs%"
                 },
                 "luahelper.test.testGlob": {
                     "description": "%luahelper.test.testGlob%",
@@ -1017,40 +1011,33 @@
                     "default": "utf8",
                     "order": 5
                 },
-                "luahelper.test.decorationRegex": {
-                    "description": "%luahelper.test.decorationRegex%",
-                    "type": "string",
-                    "scope": "resource",
-                    "default": "\\.lua:(?<line>[1-9][0-9]*):(?<message>.*)stack traceback:",
-                    "order": 6
-                },
                 "luahelper.test.logpanel": {
                     "description": "%luahelper.test.logpanel%",
                     "type": "boolean",
                     "scope": "resource",
                     "default": true,
-                    "order": 7
+                    "order": 6
                 },
                 "luahelper.test.logfile": {
                     "description": "%luahelper.test.logfile%",
                     "type": "string",
                     "scope": "resource",
                     "default": "",
-                    "order": 8
+                    "order": 7
                 },
                 "luahelper.test.debugPort": {
                     "description": "%luahelper.test.debugPort%",
                     "type": "number",
                     "scope": "resource",
                     "default": 8818,
-                    "order": 9
+                    "order": 8
                 },
                 "luahelper.test.stopOnEntry": {
-                    "description": "%luahelper.test.stopOnEntry%",
                     "type": "boolean",
-                    "scope": "resource",
                     "default": false,
-                    "order": 10
+                    "scope": "resource",
+                    "order": 9,
+                    "description": "%luahelper.test.stopOnEntry%"
                 }
             }
         },

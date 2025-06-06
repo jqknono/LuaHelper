@@ -13,12 +13,11 @@ LuaHelper VSCode插件现在支持自动发现和运行Lua测试文件。此功�
 - **luahelper.test.luaExe**: Lua可执行文件路径 (默认: "lua")
 - **luahelper.test.testGlob**: 用于查找测试文件的Glob模式 (默认: "**/[tT]est*.lua")
 - **luahelper.test.testRegex**: 用于查找测试函数的正则表达式
-- **luahelper.test.testEncoding**: 测试文件编码 (默认: "utf8")
+- **luahelper.test.testEncoding**: 测试文件编码，默认为 `"utf8"`
 
 ### 高级配置
 
-- **luahelper.test.decorationRegex**: 用于解析错误行号和消息的正则表达式
-- **luahelper.test.logpanel**: 是否在输出面板显示诊断日志 (默认: false)
+- **luahelper.test.logpanel**: 是否启用日志输出面板，默认为 `true`
 - **luahelper.test.logfile**: 写入诊断日志的文件路径
 - **luahelper.test.launchArgs**: 测试执行的启动参数 (数组)
 
