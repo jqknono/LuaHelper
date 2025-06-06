@@ -150,7 +150,7 @@ export class LuaConfigurationProvider implements vscode.DebugConfigurationProvid
         }
 
         if (config.pathCaseSensitivity == undefined) {
-            config.pathCaseSensitivity = false;
+            config.pathCaseSensitivity = true;
         }
 
         if (config.connectionPort == undefined) {

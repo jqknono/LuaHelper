@@ -987,7 +987,11 @@
                     "items": {
                         "type": "string"
                     },
-                    "default": ["-a", "-l", "-u"],
+                    "default": [
+                        "-a",
+                        "-l",
+                        "-u"
+                    ],
                     "description": "%luahelper.test.launchArgs%"
                 },
                 "luahelper.test.testGlob": {
@@ -1038,6 +1042,13 @@
                     "scope": "resource",
                     "order": 9,
                     "description": "%luahelper.test.stopOnEntry%"
+                },
+                "luahelper.qingteng.workdir": {
+                    "description": "%luahelper.qingteng.workdir%",
+                    "type": "string",
+                    "scope": "resource",
+                    "default": "/titan/agent/data/script",
+                    "order": 10
                 }
             }
         },
@@ -1056,11 +1067,10 @@
         "colors": []
     },
     "scripts": {
-        "vscode:prepublish": "npm run compile",
+        "build": "npm run compile",
         "compile": "tsc -p ./",
         "watch": "tsc -watch -p ./",
-        "package": "vsce package",
-        "publish": "vsce package"
+        "package": "npm run build && vsce package"
     },
     "devDependencies": {
         "@types/mocha": "^7.0.2",
@@ -1077,7 +1087,6 @@
         "iconv-lite": "^0.5.0",
         "path-reader": "^1.1.0",
         "smart-buffer": "^4.0.1",
-        "vsce": "^1.95.0",
         "vscode-debugadapter": "1.31.0",
         "vscode-debugprotocol": "1.31.0",
         "vscode-languageclient": "^7.1.0-next.4"

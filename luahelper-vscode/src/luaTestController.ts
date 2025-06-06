@@ -12,6 +12,7 @@
  *    - Supports error parsing with line number detection
  *    - Configurable test patterns and encoding
  *    - Prints execution command for debugging purposes
+ *    - Only recognizes files containing require("LuaUnittest") as test files
  *
  * 2. Test Debugging Features:
  *    - Uses standard VS Code debug configuration (like thirdparty/adapter.ts)
@@ -20,7 +21,7 @@
  *    - Passes test function name via environment variable
  *
  * 3. Configuration Support:
- *    - luahelper.test.testGlob: Pattern to find test files (default: "**\/[tT]est*.lua")
+ *    - luahelper.test.testGlob: Pattern to find test files (default: "**\/*.lua")
  *    - luahelper.test.testRegex: Pattern to find test functions
  *    - luahelper.test.testEncoding: File encoding (default: "utf8")
  *    - luahelper.test.luaExe: Lua executable path (default: "lua")
@@ -31,7 +32,8 @@
  *    - luahelper.test.stopOnEntry: Whether to stop on entry when debugging
  *
  * Usage:
- *   - Tests are discovered automatically based on file patterns
+ *   - Tests are discovered automatically based on file patterns and LuaUnittest requirement
+ *   - Test files must contain require("LuaUnittest") to be recognized
  *   - Test functions should start with "test" or "Test"
  *   - Use VS Code native testing UI to run or debug tests
  *   - Test function name is passed via TEST_FUNCTION environment variable
@@ -43,7 +45,6 @@ import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
 import * as cp from "child_process";
-import * as os from "os";
 import { minimatch } from "glob";
 import { Tools } from "./common/tools";
 
@@ -218,8 +219,7 @@ export class LuaTestController {
         await this.parseTestFile(
           file,
           testConfig.testRegex,
-          testConfig.testEncoding,
-          workspaceFolder
+          testConfig.testEncoding
         );
       }
     } catch (error) {
@@ -312,20 +312,32 @@ export class LuaTestController {
         `[LuaTestController] Invalid glob pattern: ${pattern}`,
         error
       );
-      return filePath.toLowerCase().includes(pattern.toLowerCase());
+      return filePath.includes(pattern);
     }
   }
 
   private async parseTestFile(
     filePath: string,
     testRegex: RegExp,
-    encoding: string,
-    workspaceFolder: vscode.WorkspaceFolder
+    encoding: string
   ) {
     try {
       const content = fs
         .readFileSync(filePath, { encoding: encoding as any })
         .toString();
+
+      // 检查文件是否包含 require("LuaUnittest")，如果没有则不识别为测试文件
+      const hasLuaUnittestRequire =
+        content.includes('require("LuaUnittest")') ||
+        content.includes("require('LuaUnittest')") ||
+        content.includes("require([[LuaUnittest]])");
+
+      if (!hasLuaUnittestRequire) {
+        this.log(
+          `[LuaTestController] Skipping file ${filePath} - no LuaUnittest require found`
+        );
+        return;
+      }
 
       const fileUri = vscode.Uri.file(filePath);
 
@@ -374,6 +386,10 @@ export class LuaTestController {
           `[LuaTestController] Found ${fileItem.children.size} test(s) in ${filePath}, copying required files...`
         );
         this.copyRequiredFiles();
+      } else {
+        this.log(
+          `[LuaTestController] File ${filePath} has LuaUnittest require but no test functions found`
+        );
       }
     } catch (error) {
       // Ignore file parsing errors - log to output channel instead
@@ -527,17 +543,24 @@ export class LuaTestController {
     const testConfig = this.getTestConfig(workspaceFolder);
 
     try {
+      // 直接使用原始文件路径
+      let targetFilePath = filePath;
+      let workingDirectory = workspaceFolder.uri.fsPath; // 使用工作区目录作为工作目录
+
       // Create debug configuration similar to thirdparty/adapter.ts
       // Use standard lua debug configuration instead of LuaHelper-Debug
       // Build arguments array with custom lua args from launchArgs
       const args = [...testConfig.launchArgs];
 
       // Add the test file path to the arguments
-      args.push(filePath);
+      args.push(targetFilePath);
 
       // Print the debug command for debugging
       const commandStr = `${testConfig.luaExe} ${args.join(" ")}`;
       this.log(`[LuaTestController] Debug command: ${commandStr}`);
+      this.log(
+        `[LuaTestController] Debug working directory: ${workingDirectory}`
+      );
       this.log(
         `[LuaTestController] Debug environment: TEST_FUNCTION=${testName}`
       );
@@ -546,7 +569,7 @@ export class LuaTestController {
         type: "LuaHelper-Debug",
         request: "launch",
         name: `Debug Test: ${testName}`,
-        cwd: workspaceFolder.uri.fsPath,
+        cwd: workingDirectory,
         luaFileExtension: "lua",
         connectionPort: testConfig.debugPort,
         stopOnEntry: testConfig.stopOnEntry,
@@ -562,6 +585,7 @@ export class LuaTestController {
 
       // Start debugging session
       const success = await vscode.debug.startDebugging(
+        
         workspaceFolder,
         debugConfig
       );
@@ -591,11 +615,15 @@ export class LuaTestController {
     const startTime = Date.now();
 
     try {
+      // 直接使用原始文件路径
+      let targetFilePath = filePath;
+      let workingDirectory = workspaceFolder.uri.fsPath;
+
       // Build arguments array with custom lua args from launchArgs
       const args = [...testConfig.launchArgs];
 
       // Add the test file path to the arguments
-      args.push(filePath);
+      args.push(targetFilePath);
 
       // Set up environment variables including test function name
       const env = {
@@ -606,11 +634,12 @@ export class LuaTestController {
       // Print the execution command for debugging
       const commandStr = `${testConfig.luaExe} ${args.join(" ")}`;
       this.log(`[LuaTestController] Executing command: ${commandStr}`);
+      this.log(`[LuaTestController] Working directory: ${workingDirectory}`);
       this.log(`[LuaTestController] Environment: TEST_FUNCTION=${testName}`);
 
       // Execute with custom arguments and environment variables
       const lua = cp.spawnSync(testConfig.luaExe, args, {
-        cwd: workspaceFolder.uri.fsPath,
+        cwd: workingDirectory,
         env: env,
         encoding: "utf8", // 确保正确的编码
         timeout: 30000, // 30秒超时
@@ -735,13 +764,16 @@ export class LuaTestController {
 
           // 获取测试文件路径
           const testFilePath = test.uri?.fsPath || filePath;
-          const relativePath = path.relative(workspaceFolder.uri.fsPath, testFilePath);
-          
+          const relativePath = path.relative(
+            workspaceFolder.uri.fsPath,
+            testFilePath
+          );
+
           // 创建包含文件路径和行号的错误消息
           const genericFailure = new vscode.TestMessage(
             `测试失败: ${testName}\n文件: ${relativePath}\n原因: ${failureReason}`
           );
-          
+
           // 如果测试项有位置信息，设置错误位置
           if (test.range && test.uri) {
             genericFailure.location = new vscode.Location(
@@ -749,7 +781,7 @@ export class LuaTestController {
               test.range.start
             );
           }
-          
+
           failureMessages.push(genericFailure);
         }
 
@@ -784,9 +816,9 @@ export class LuaTestController {
       `[LuaTestController] Parsing stdout for errors in file ${test.uri?.fsPath}`
     );
 
-    // 只输出QtAgentUnit的ERROR和FAIL日志到test results面板
+    // 只输出LuaUnittest的ERROR和FAIL日志到test results面板
     const qtAgentErrorLogs = stdout.match(
-      /\[[\d:]+\]\s*\[QtAgentUnit\]\s*\[(ERROR|FAIL|FAILURE)\]\s*(.+)/gm
+      /\[[\d:]+\]\s*\[LuaUnittest\]\s*\[(ERROR|FAIL|FAILURE)\]\s*(.+)/gm
     );
     if (qtAgentErrorLogs && qtAgentErrorLogs.length > 0) {
       run.appendOutput(`━━━ Error Details ━━━\r\n`, undefined, test);
@@ -796,9 +828,9 @@ export class LuaTestController {
       run.appendOutput(`━━━━━━━━━━━━━━━━━━━━━\r\n`, undefined, test);
     }
 
-    // Parse QtAgentUnit.lua ERROR and FAIL messages
+    // Parse LuaUnittest.lua ERROR and FAIL messages
     const qtErrorRegex =
-      /\[[\d:]+\]\s*\[QtAgentUnit\]\s*\[(ERROR|FAIL|FAILURE)\]\s*(.+)/gm;
+      /\[[\d:]+\]\s*\[LuaUnittest\]\s*\[(ERROR|FAIL|FAILURE)\]\s*(.+)/gm;
     let qtMatch;
     while ((qtMatch = qtErrorRegex.exec(stdout)) !== null) {
       const logLevel = qtMatch[1].trim();
@@ -836,7 +868,7 @@ export class LuaTestController {
 
             messages.push(testMessage);
             this.log(
-              `[LuaTestController] Found QtAgentUnit error with location: ${filename}:${lineNumber}, message: ${message}`
+              `[LuaTestController] Found LuaUnittest error with location: ${filename}:${lineNumber}, message: ${message}`
             );
           }
         }
@@ -866,11 +898,14 @@ export class LuaTestController {
           // 没有找到明确的错误信息，创建包含位置信息的失败消息
           const testFilePath = test.uri?.fsPath;
           if (testFilePath) {
-            const relativePath = path.relative(workspaceFolder.uri.fsPath, testFilePath);
+            const relativePath = path.relative(
+              workspaceFolder.uri.fsPath,
+              testFilePath
+            );
             const failureMessage = new vscode.TestMessage(
               `测试失败，无具体错误信息\n文件: ${relativePath}\n测试函数: ${test.label}`
             );
-            
+
             // 如果测试项有位置信息，设置错误位置
             if (test.range && test.uri) {
               failureMessage.location = new vscode.Location(
@@ -878,26 +913,31 @@ export class LuaTestController {
                 test.range.start
               );
             }
-            
+
             messages.push(failureMessage);
           } else {
             // 如果没有文件路径信息，使用原来的简单消息
             messages.push(
-              new vscode.TestMessage("Test failed with no specific error message")
+              new vscode.TestMessage(
+                "Test failed with no specific error message"
+              )
             );
           }
         } else {
           // 找到了包含错误关键词的行，创建包含位置信息的错误消息
           const testFilePath = test.uri?.fsPath;
           if (testFilePath) {
-            const relativePath = path.relative(workspaceFolder.uri.fsPath, testFilePath);
-            
+            const relativePath = path.relative(
+              workspaceFolder.uri.fsPath,
+              testFilePath
+            );
+
             // 将所有错误行合并为一个消息
-            const errorText = errorLines.join('\n');
+            const errorText = errorLines.join("\n");
             const failureMessage = new vscode.TestMessage(
               `测试失败:\n文件: ${relativePath}\n测试函数: ${test.label}\n错误信息:\n${errorText}`
             );
-            
+
             // 如果测试项有位置信息，设置错误位置
             if (test.range && test.uri) {
               failureMessage.location = new vscode.Location(
@@ -905,11 +945,11 @@ export class LuaTestController {
                 test.range.start
               );
             }
-            
+
             messages.push(failureMessage);
           } else {
             // 如果没有文件路径信息，使用错误行内容创建消息
-            const errorText = errorLines.join('\n');
+            const errorText = errorLines.join("\n");
             messages.push(
               new vscode.TestMessage(`Test failed with errors:\n${errorText}`)
             );
@@ -937,7 +977,7 @@ export class LuaTestController {
         : /^\s*function\s+(?:[a-zA-Z][a-zA-Z0-9]*:)?([tT]est[a-zA-Z0-9]*)\(\)(?:.*)$/gm,
       testEncoding: config.get<string>("testEncoding") || "utf8",
 
-      luaExe: config.get<string>("luaExe") || "/titan/agent/titanagent",
+      luaExe: config.get<string>("luaExe") || "",
 
       // Custom lua arguments for embedded lua executables
       launchArgs: config.get<string[]>("launchArgs") || ["-a", "-l", "-u"],
@@ -963,16 +1003,15 @@ export class LuaTestController {
     }
 
     try {
-      // 适配Qingteng Agent - 拷贝LuaPanda.lua和QtAgentUnit.lua文件到titan agent目录
+      // 适配Qingteng Agent - 拷贝LuaPanda.lua和LuaUnittest.lua文件到titan agent目录
       let workDir = "";
-      if (os.type() === "Windows_NT") {
-        workDir = "c:\\program files\\titanagent\\data\\script";
-      } else if (os.type() === "Linux") {
-        workDir = "/titan/agent/data/script";
-      } else {
-        // 其他系统暂不处理
-        this.log(`[LuaTestController] Unsupported OS type: ${os.type()}`);
-        return;
+      
+      // 从配置中读取Qingteng Agent工作目录
+      const qingtengConfig = vscode.workspace.getConfiguration("luahelper.qingteng");
+      const configuredWorkDir = qingtengConfig.get<string>("workdir");
+      
+      if (configuredWorkDir && configuredWorkDir.trim() !== "") {
+        workDir = configuredWorkDir.trim();
       }
 
       // 创建目录（如果不存在）
@@ -1012,25 +1051,25 @@ export class LuaTestController {
         );
       }
 
-      // 拷贝QtAgentUnit.lua文件
+      // 拷贝LuaUnittest.lua文件
       try {
-        const qtAgentUnitPath = path.join(workDir, "QtAgentUnit.lua");
-        if (!fs.existsSync(qtAgentUnitPath)) {
-          const qtAgentUnitContent = fs.readFileSync(
-            Tools.getQtAgentUnitPathInExtension()
+        const LuaUnittestPath = path.join(workDir, "LuaUnittest.lua");
+        if (!fs.existsSync(LuaUnittestPath)) {
+          const LuaUnittestContent = fs.readFileSync(
+            Tools.getLuaUnittestPathInExtension()
           );
-          fs.writeFileSync(qtAgentUnitPath, qtAgentUnitContent);
+          fs.writeFileSync(LuaUnittestPath, LuaUnittestContent);
           this.log(
-            `[LuaTestController] Copied QtAgentUnit.lua to ${qtAgentUnitPath}`
+            `[LuaTestController] Copied LuaUnittest.lua to ${LuaUnittestPath}`
           );
         } else {
           this.log(
-            `[LuaTestController] QtAgentUnit.lua already exists at ${qtAgentUnitPath}`
+            `[LuaTestController] LuaUnittest.lua already exists at ${LuaUnittestPath}`
           );
         }
       } catch (error) {
         this.logError(
-          `[LuaTestController] Failed to copy QtAgentUnit.lua:`,
+          `[LuaTestController] Failed to copy LuaUnittest.lua:`,
           error
         );
       }

@@ -90,5 +90,6 @@
     "luahelper.test.logpanel": "启用测试结果输出通道，默认为 true",
     "luahelper.test.logfile": "将诊断日志写入指定文件",
     "luahelper.test.debugPort": "LuaPanda 调试连接端口号，默认为 8818",
-    "luahelper.test.stopOnEntry": "调试测试时在入口处停止，默认为 true"
+    "luahelper.test.stopOnEntry": "调试测试时在入口处停止，默认为 true",
+    "luahelper.qingteng.workdir": "青藤 Agent 适配的工作目录路径"
 }

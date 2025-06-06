@@ -112,7 +112,7 @@ function Logger.log(level, message, noColor)
     local colorStart = shouldUseColor and levelInfo.color or ""
     local colorEnd = shouldUseColor and Logger.COLORS.RESET or ""
 
-    local logMessage = string.format("%s [QtAgentUnit] %s%s%s %s", timestamp, colorStart, levelInfo.prefix, colorEnd,
+    local logMessage = string.format("%s [LuaUnittest] %s%s%s %s", timestamp, colorStart, levelInfo.prefix, colorEnd,
                            message)
 
     print(logMessage)
@@ -139,16 +139,16 @@ function Logger.separator(char, length)
     length = length or 50
     local timestamp = Logger.getTimestamp()
     local separatorLine = string.rep(char, length)
-    print(string.format("%s [QtAgentUnit] %s", timestamp, separatorLine))
+    print(string.format("%s [LuaUnittest] %s", timestamp, separatorLine))
 end
 
 -- 空行打印
 function Logger.newline()
     local timestamp = Logger.getTimestamp()
-    print(string.format("%s [QtAgentUnit]", timestamp))
+    print(string.format("%s [LuaUnittest]", timestamp))
 end
 
--- 输出特殊状态（如OK/FAILED），不添加QtAgentUnit标识以保持兼容性
+-- 输出特殊状态（如OK/FAILED），不添加LuaUnittest标识以保持兼容性
 function Logger.status(message) print(message) end
 
 -- 测试框架配置

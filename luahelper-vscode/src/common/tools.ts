@@ -19,8 +19,8 @@ export class Tools {
     }
 
     // 获取扩展中预置的lua文件位置
-    public static getQtAgentUnitPathInExtension() : string{
-        let luaPathInVSCodeExtension = this.VSCodeExtensionPath + "/debugger/QtAgentUnit.lua";
+    public static getLuaUnittestPathInExtension() : string{
+        let luaPathInVSCodeExtension = this.VSCodeExtensionPath + "/debugger/LuaUnittest.lua";
         return luaPathInVSCodeExtension;
     }
 

@@ -285,10 +285,13 @@ export class LuaDebugSession extends LoggingDebugSession {
         //3. 适配Qingteng Agent
         // 拷贝LuaPanda.lua文件到titan agent目录
         let workDir = ""
-        if (os.type() === "Windows_NT") {
-            workDir = "c:\\program files\\titanagent\\data\\script";
-        } else if (os.type() === "Linux") {
-            workDir = "/titan/agent/data/script";
+        
+        // 从配置中读取Qingteng Agent工作目录
+        const qingtengConfig = vscode.workspace.getConfiguration("luahelper.qingteng");
+        const configuredWorkDir = qingtengConfig.get<string>("workdir");
+        
+        if (configuredWorkDir && configuredWorkDir.trim() !== "") {
+            workDir = configuredWorkDir.trim();
         }
         if (!fs.existsSync(workDir)) {
             fs.mkdirSync(workDir);
@@ -301,11 +304,17 @@ export class LuaDebugSession extends LoggingDebugSession {
         }
 
         // 拷贝luaunit.lua文件到titan agent目录
-        let luaunitContent = fs.readFileSync(Tools.getQtAgentUnitPathInExtension());
-        let luaunitPath = workDir + "/QtAgentUnit.lua";
+        let luaunitContent = fs.readFileSync(Tools.getLuaUnittestPathInExtension());
+        let luaunitPath = workDir + "/LuaUnittest.lua";
         // write if not exist
         if (!fs.existsSync(luaunitPath)) {
             fs.writeFileSync(luaunitPath, luaunitContent);
+        }
+
+        // 创建调试器所需要的环境变量，继承当前环境变量并合并传入的环境变量
+        let terminalEnv = { ...process.env };
+        if (args.env && typeof args.env === 'object') {
+            terminalEnv = { ...terminalEnv, ...args.env };
         }
 
         this.breakpointsArray = new Array();
@@ -326,7 +335,7 @@ export class LuaDebugSession extends LoggingDebugSession {
             }
             this._debugFileTermianl = vscode.window.createTerminal({
                 name: "Debug Lua File (LuaPanda)",
-                env: {}, 
+                env: terminalEnv, // 使用包含环境变量的配置
             });
 
               // 把路径加入package.path
@@ -372,7 +381,7 @@ export class LuaDebugSession extends LoggingDebugSession {
                     }
                     this._programTermianl = vscode.window.createTerminal({
                         name: "Run Program File (LuaPanda)",
-                        env: {}, 
+                        env: terminalEnv, // 使用包含环境变量的配置
                     });
     
                     let progaamCmdwithArgs = '"' + args.program + '"';
