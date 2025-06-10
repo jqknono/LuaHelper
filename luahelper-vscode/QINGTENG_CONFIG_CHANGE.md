@@ -1,12 +1,12 @@
-# Qingteng Agent 工作目录配置化改进
+# test Agent 工作目录配置化改进
 
 ## 修改概述
 
-将适配 Qingteng Agent 的代码从硬编码路径改为可配置方式，支持通过 VS Code 设置来自定义工作目录。
+将适配 test Agent 的代码从硬编码路径改为可配置方式，支持通过 VS Code 设置来自定义工作目录。
 
 ## 新增配置项
 
-### luahelper.qingteng.workdir
+### luahelper.test.workdir
 
 - **类型**: `string`
 - **默认值**: `""` (空字符串)
@@ -22,7 +22,7 @@
 ## 修改的文件
 
 ### 1. package.json
-- 添加了新的配置项 `luahelper.qingteng.workdir`
+- 添加了新的配置项 `luahelper.test.workdir`
 - 包含完整的配置定义（类型、默认值、描述等）
 
 ### 2. package.nls.json
@@ -46,7 +46,7 @@
 ### 在 VS Code 设置中配置
 
 1. 打开 VS Code 设置 (Ctrl/Cmd + ,)
-2. 搜索 "luahelper.qingteng.workdir"
+2. 搜索 "luahelper.test.workdir"
 3. 设置自定义的工作目录路径，例如：
    - `/custom/path/to/agent/script`
    - `D:\MyAgent\data\script`
@@ -55,7 +55,7 @@
 
 ```json
 {
-    "luahelper.qingteng.workdir": "/custom/path/to/agent/script"
+    "luahelper.test.workdir": "/custom/path/to/agent/script"
 }
 ```
 
@@ -65,7 +65,7 @@
 
 ```json
 {
-    "luahelper.qingteng.workdir": "/project/specific/agent/path"
+    "luahelper.test.workdir": "/project/specific/agent/path"
 }
 ```
 
@@ -80,9 +80,9 @@
 修改后的核心逻辑：
 
 ```typescript
-// 从配置中读取Qingteng Agent工作目录
-const qingtengConfig = vscode.workspace.getConfiguration("luahelper.qingteng");
-const configuredWorkDir = qingtengConfig.get<string>("workdir");
+// 从配置中读取test Agent工作目录
+const testConfig = vscode.workspace.getConfiguration("luahelper.test");
+const configuredWorkDir = testConfig.get<string>("workdir");
 
 if (configuredWorkDir && configuredWorkDir.trim() !== "") {
     workDir = configuredWorkDir.trim();

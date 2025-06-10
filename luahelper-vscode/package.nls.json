@@ -91,5 +91,5 @@
     "luahelper.test.logfile": "Write diagnostic logs to the given file",
     "luahelper.test.debugPort": "Port number for LuaPanda debug connection. Defaults to 8818",
     "luahelper.test.stopOnEntry": "Stop on entry when debugging tests. Defaults to true",
-    "luahelper.qingteng.workdir": "Working directory for Qingteng Agent adaptation."
+    "luahelper.test.workdir": "Working directory for test files."
 }

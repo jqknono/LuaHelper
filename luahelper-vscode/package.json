@@ -2,7 +2,7 @@
     "name": "LuaForQingteng",
     "displayName": "LuaForQingTeng",
     "description": "LuaHelper, Intellisense, Linting, Debugging, Code formatting, High-performance, and more.",
-    "version": "6.2.29",
+    "version": "7.2.29",
     "publisher": "LuaForQingteng",
     "author": {
         "name": "Cecil",
@@ -1043,8 +1043,8 @@
                     "order": 9,
                     "description": "%luahelper.test.stopOnEntry%"
                 },
-                "luahelper.qingteng.workdir": {
-                    "description": "%luahelper.qingteng.workdir%",
+                "luahelper.test.workdir": {
+                    "description": "%luahelper.test.workdir%",
                     "type": "string",
                     "scope": "resource",
                     "default": "/titan/agent/data/script",
@@ -1067,8 +1067,9 @@
         "colors": []
     },
     "scripts": {
-        "build": "npm run compile",
+        "build": "npm run clean && npm run compile",
         "compile": "tsc -p ./",
+        "clean": "rm -rf out",
         "watch": "tsc -watch -p ./",
         "package": "npm run build && vsce package"
     },

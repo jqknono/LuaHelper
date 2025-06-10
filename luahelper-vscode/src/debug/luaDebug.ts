@@ -282,17 +282,10 @@ export class LuaDebugSession extends LoggingDebugSession {
             this.startServer(sendArgs);
         }
 
-        //3. 适配Qingteng Agent
-        // 拷贝LuaPanda.lua文件到titan agent目录
-        let workDir = ""
-        
-        // 从配置中读取Qingteng Agent工作目录
-        const qingtengConfig = vscode.workspace.getConfiguration("luahelper.qingteng");
-        const configuredWorkDir = qingtengConfig.get<string>("workdir");
-        
-        if (configuredWorkDir && configuredWorkDir.trim() !== "") {
-            workDir = configuredWorkDir.trim();
-        }
+        //3. 拷贝LuaPanda.lua文件到titan agent目录
+        let workDir = vscode.workspace.getConfiguration("luahelper.test").get<string>("workdir");
+        if (!workDir) return;
+
         if (!fs.existsSync(workDir)) {
             fs.mkdirSync(workDir);
         }

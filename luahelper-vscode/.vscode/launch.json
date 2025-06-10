@@ -13,6 +13,7 @@
             "args": [
                 "--extensionDevelopmentPath=${workspaceFolder}",
                 "${workspaceFolder}/testing-example"
+                // "/root/code/4.x.code-workspace"
             ],
             "outFiles": [
                 "${workspaceFolder}/out/**/*.js"
@@ -20,7 +21,7 @@
             "env": {
                 "DEBUG_MODE": "true"
             },
-            "preLaunchTask": "npm: compile"
+            "preLaunchTask": "npm: build"
         },
         {
             "name": "Extension Tests",
@@ -34,7 +35,7 @@
             "outFiles": [
                 "${workspaceFolder}/out/test/**/*.js"
             ],
-            "preLaunchTask": "npm: compile"
+            "preLaunchTask": "npm: build"
         }
     ]
 }
