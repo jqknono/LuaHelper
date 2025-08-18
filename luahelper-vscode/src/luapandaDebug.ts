@@ -67,7 +67,7 @@ export class LuaConfigurationProvider implements vscode.DebugConfigurationProvid
             //拼接命令
             pathCMD = " \"package.path = " + pathCMD + ".. package.path; ";
         
-            let doFileCMD = filePath;
+            let doFileCMD = "\"" + filePath + "\"";  // 使用双引号包围文件路径以处理空格
             let runCMD = pathCMD + cpathCMD + "\" " + doFileCMD;
 
             let LuaCMD = strVect[0] + " -e ";

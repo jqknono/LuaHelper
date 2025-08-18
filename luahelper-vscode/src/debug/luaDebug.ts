@@ -357,7 +357,7 @@ export class LuaDebugSession extends LoggingDebugSession {
               //拼接命令
               pathCMD = " \"package.path = " + pathCMD + ".. package.path; ";
               let reqCMD = "require('LuaPanda').start('127.0.0.1'," + this.TCPPort + ");\" ";
-              let doFileCMD = filePath;
+              let doFileCMD = "\"" + filePath + "\"";  // 使用双引号包围文件路径以处理空格
               let runCMD = pathCMD + cpathCMD + reqCMD + doFileCMD;
   
               let LuaCMD = strVect[0] + " -e ";

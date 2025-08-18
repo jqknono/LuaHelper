@@ -7,7 +7,6 @@ import * as process from "process";
 import * as child_process from "child_process";
 import * as Annotator from "./annotator";
 import * as notifications from "./notifications";
-import * as os from 'os';
 //import { LanguageClient, LanguageClientOptions, ServerOptions, StreamInfo } from "vscode-languageclient";
 import { LuaLanguageConfiguration } from './languageConfiguration';
 import { Tools } from './common/tools';
@@ -16,7 +15,8 @@ import { LuaConfigurationProvider } from './luapandaDebug';
 import { LuaFormatRangeProvider, LuaFormatProvider } from "./luaformat";
 import { OnlinePeople } from './onlinePeople';
 import { LuaTestController } from './luaTestController';
-
+import { PlatformConfigManager } from './common/platformConfig';
+import * as os from 'os';
 
 import {
     LanguageClient,
@@ -36,6 +36,9 @@ let onlinePeople = new OnlinePeople();
 let progressBar: vscode.StatusBarItem;
 
 export function activate(context: vscode.ExtensionContext) {
+    // 初始化平台特定配置
+    PlatformConfigManager.initializePlatformConfigs();
+    
     let luaDocContext = {
         ViewType: undefined,
         OpenCommand: undefined,

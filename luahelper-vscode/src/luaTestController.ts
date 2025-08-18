@@ -47,6 +47,7 @@ import * as path from "path";
 import * as cp from "child_process";
 import { minimatch } from "glob";
 import { Tools } from "./common/tools";
+import * as crypto from "crypto";
 
 export class LuaTestController {
   private testController: vscode.TestController;
@@ -516,8 +517,8 @@ export class LuaTestController {
     // Build arguments array with custom lua args from launchArgs
     const args = [...testConfig.launchArgs];
 
-    // Add the test file path to the arguments
-    args.push(targetFilePath);
+    // Add the test file path to the arguments (使用双引号包围路径以处理空格)
+    args.push(`"${targetFilePath}"`);
 
     // Print the debug command for debugging
     const commandStr = `${testConfig.luaExe} ${args.join(" ")}`;
@@ -592,7 +593,7 @@ export class LuaTestController {
     // Build arguments array with custom lua args from launchArgs
     const args = [...launchArgs];
 
-    // Add the test file path to the arguments
+    // Add the test file path to the arguments（注意：spawnSync 的 args 不需要手动加引号）
     args.push(targetFilePath);
 
     // Set up environment variables including test function name
@@ -606,6 +607,38 @@ export class LuaTestController {
     this.log(`[LuaTestController] Executing command: ${commandStr}`);
     this.log(`[LuaTestController] Working directory: ${workDir}`);
     this.log(`[LuaTestController] Environment: TEST_FUNCTION=${testName}`);
+    this.log(`[LuaTestController] Args(JSON): ${JSON.stringify(args)}`);
+
+    // 运行前置检查：目标文件存在性、大小、前 256 字节预览
+    const targetExists = fs.existsSync(targetFilePath);
+    this.log(`[LuaTestController] Target file exists: ${targetExists} -> ${targetFilePath}`);
+    if (targetExists) {
+      try {
+        const stat = fs.statSync(targetFilePath);
+        this.log(`[LuaTestController] Target file size: ${stat.size} bytes`);
+        const fd = fs.openSync(targetFilePath, "r");
+        const buf = Buffer.alloc(256);
+        const read = fs.readSync(fd, buf, 0, 256, 0);
+        fs.closeSync(fd);
+        this.log(
+          `[LuaTestController] Target head(<=256B):\n${buf.toString("utf8", 0, Math.max(0, read))}`
+        );
+      } catch (e) {
+        this.logError(`[LuaTestController] Failed to stat/read target file`, e);
+      }
+    } else {
+      // 列表工作目录，便于诊断路径错误
+      try {
+        const files = fs.readdirSync(workDir);
+        this.log(
+          `[LuaTestController] List workDir (${workDir}) files(${files.length}): ${files
+            .slice(0, 50)
+            .join(", ")}`
+        );
+      } catch (e) {
+        this.logError(`[LuaTestController] Failed to list workDir ${workDir}`, e);
+      }
+    }
 
     // Execute with custom arguments and environment variables
     const lua = cp.spawnSync(luaExe, args, {
@@ -616,10 +649,24 @@ export class LuaTestController {
     });
 
     const duration = Date.now() - startTime;
+
     const stderr = String(lua.stderr || "");
     const stdout = String(lua.stdout || "");
     const exitCode = lua.status;
     const signal = lua.signal;
+
+    this.log(
+      `[LuaTestController] stdout length: ${stdout.length}, head(1000):\n${stdout.substring(
+        0,
+        1000
+      )}`
+    );
+    this.log(
+      `[LuaTestController] stderr length: ${stderr.length}, head(1000):\n${stderr.substring(
+        0,
+        1000
+      )}`
+    );
 
     // Add debug logging to understand the output
     this.log(`[LuaTestController] Test execution completed for ${testName}`);
@@ -669,15 +716,15 @@ export class LuaTestController {
       return;
     }
 
-    // Check for test passed pattern - 基于输出内容判断测试结果
-    const passed =
-      stdout &&
-      stdout.length > 0 &&
-      (stdout.match(new RegExp(`Test\\s+'${testName}'\\s+PASSED`, "i")) ||
-        stdout.match(new RegExp(`${testName}.*PASSED`, "i")) ||
-        stdout.match(/\bOK\b/));
+    // 通过检测自定义标记判断是否通过
+    const beginMarker = new RegExp(`TEST_BEGIN\\s+${testName}`, "i");
+    const endMarker = new RegExp(`TEST_END\\s+${testName}`, "i");
+    const beginFound = !!stdout.match(beginMarker);
+    const endFound = !!stdout.match(endMarker);
 
-    // Check for explicit failure patterns
+    const passed = beginFound && endFound;
+
+    // 若需要提供更丰富的失败信息，可继续解析 stdout/stderr，但不影响通过判定
     const explicitFailure =
       stdout &&
       stdout.length > 0 &&
@@ -686,24 +733,15 @@ export class LuaTestController {
         stdout.match(/test.*failed/i));
 
     this.log(`[LuaTestController] Test result evaluation for ${testName}:`);
-    this.log(
-      `[LuaTestController] - Pattern "Test '${testName}' PASSED": ${!!stdout.match(
-        new RegExp(`Test\\s+'${testName}'\\s+PASSED`, "i")
-      )}`
-    );
-    this.log(
-      `[LuaTestController] - Pattern "${testName}.*PASSED": ${!!stdout.match(
-        new RegExp(`${testName}.*PASSED`, "i")
-      )}`
-    );
-    this.log(
-      `[LuaTestController] - Contains 'OK': ${!!stdout.match(/\bOK\b/)}`
-    );
-    this.log(`[LuaTestController] - Contains 'FAILED': ${!!explicitFailure}`);
-    this.log(`[LuaTestController] - Exit Code: ${exitCode}`);
-    this.log(
-      `[LuaTestController] - Final result: ${passed ? "PASSED" : "FAILED"}`
-    );
+    this.log(`[LuaTestController] - Found TEST_BEGIN: ${beginFound}`);
+    this.log(`[LuaTestController] - Found TEST_END  : ${endFound}`);
+    if (!beginFound || !endFound) {
+      this.log(
+        `[LuaTestController] Marker scan failed, stdout tail(1000):\n${stdout.substring(Math.max(0, stdout.length - 1000))}`
+      );
+    }
+    this.log(`[LuaTestController] - Exit Code      : ${exitCode}`);
+    this.log(`[LuaTestController] - Final result   : ${passed ? "PASSED" : "FAILED"}`);
 
     if (passed) {
       this.log(`[LuaTestController] Marking test ${testName} as PASSED`);
@@ -718,14 +756,19 @@ export class LuaTestController {
       // 测试未通过 - 仅输出error和fail相关信息到test result窗口
       const failureMessages = this.parseErrorMessages(stdout, test, run);
 
+      // 组装详细失败原因
+      const reasons: string[] = [];
+      if (!beginFound) reasons.push("TEST_BEGIN 标记缺失");
+      if (!endFound) reasons.push("TEST_END 标记缺失");
+      if (explicitFailure) reasons.push("stdout 检测到 FAILED/断言失败 关键字");
+      if (stderr && stderr.toLowerCase().includes("read lua script empty")) {
+        reasons.push("引擎报错: read lua script empty (可能是脚本路径/权限/参数格式问题)");
+      }
+      if (exitCode !== 0 && exitCode !== 1) reasons.push(`退出码: ${exitCode}`);
+
       if (failureMessages.length === 0) {
         // 创建通用失败消息，包含文件路径和行号信息
-        let failureReason = "No 'PASSED' or 'OK' pattern found in output";
-        if (explicitFailure) {
-          failureReason = "Test explicitly marked as FAILED";
-        } else if (exitCode !== 0 && exitCode !== 1) {
-          failureReason = `Unexpected exit code: ${exitCode}`;
-        }
+        let failureReason = reasons.length > 0 ? reasons.join("; ") : "未知原因";
 
         // 获取测试文件路径
         const testFilePath = test.uri?.fsPath || filePath;
@@ -749,10 +792,15 @@ export class LuaTestController {
 
       // 只输出失败结果和错误信息
       run.appendOutput(
-        `❌ Test "${testName}" FAILED (${duration}ms)\r\n`,
+        `❌ Test "${testName}" FAILED (${duration}ms) 原因: ${reasons.join(", ")}\r\n`,
         undefined,
         test
       );
+      // 追加上下文，便于定位
+      run.appendOutput(`WorkDir: ${workDir}\r\n`, undefined, test);
+      run.appendOutput(`Args(JSON): ${JSON.stringify(args)}\r\n`, undefined, test);
+      run.appendOutput(`STDERR(head1000):\r\n${stderr.substring(0, 1000)}\r\n`, undefined, test);
+      run.appendOutput(`STDOUT(head1000):\r\n${stdout.substring(0, 1000)}\r\n`, undefined, test);
       run.failed(test, failureMessages, duration);
     }
   }
@@ -942,34 +990,63 @@ export class LuaTestController {
       this.log(`[LuaTestController] Created directory: ${workDir}`);
     }
 
-    // 拷贝LuaPanda.lua文件
+    // 计算文件哈希的辅助函数
+    const calcHash = (buffer: Buffer): string => {
+      return crypto.createHash("md5").update(buffer).digest("hex");
+    };
+
+    // -------- LuaPanda.lua --------
     const luaPandaPath = path.join(workDir, "LuaPanda.lua");
-    if (!fs.existsSync(luaPandaPath)) {
-      const luaPandaContent = fs.readFileSync(
-        Tools.getLuaPandaPathInExtension()
-      );
-      fs.writeFileSync(luaPandaPath, luaPandaContent);
-      this.log(`[LuaTestController] Copied LuaPanda.lua to ${luaPandaPath}`);
-    } else {
-      this.log(
-        `[LuaTestController] LuaPanda.lua already exists at ${luaPandaPath}`
-      );
+    const luaPandaSrcPath = Tools.getLuaPandaPathInExtension();
+    const luaPandaSrc = fs.readFileSync(luaPandaSrcPath);
+
+    let shouldCopyLuaPanda = true;
+    if (fs.existsSync(luaPandaPath)) {
+      try {
+        const luaPandaDst = fs.readFileSync(luaPandaPath);
+        const srcHash = calcHash(luaPandaSrc);
+        const dstHash = calcHash(luaPandaDst);
+        this.log(`[LuaTestController] LuaPanda.lua hash comparison -> src(${srcHash}) vs dst(${dstHash})`);
+        shouldCopyLuaPanda = srcHash !== dstHash;
+        if (!shouldCopyLuaPanda) {
+          this.log(`[LuaTestController] LuaPanda.lua up-to-date at ${luaPandaPath}`);
+        }
+      } catch (e) {
+        this.logError("Failed to read existing LuaPanda.lua, will overwrite", e);
+      }
     }
 
-    // 拷贝LuaUnittest.lua文件
-    const LuaUnittestPath = path.join(workDir, "LuaUnittest.lua");
-    if (!fs.existsSync(LuaUnittestPath)) {
-      const LuaUnittestContent = fs.readFileSync(
-        Tools.getLuaUnittestPathInExtension()
-      );
-      fs.writeFileSync(LuaUnittestPath, LuaUnittestContent);
-      this.log(
-        `[LuaTestController] Copied LuaUnittest.lua to ${LuaUnittestPath}`
-      );
-    } else {
-      this.log(
-        `[LuaTestController] LuaUnittest.lua already exists at ${LuaUnittestPath}`
-      );
+    if (shouldCopyLuaPanda) {
+      this.log(`[LuaTestController] Overwriting LuaPanda.lua (hash changed)`);
+      fs.writeFileSync(luaPandaPath, luaPandaSrc);
+      this.log(`[LuaTestController] Copied LuaPanda.lua to ${luaPandaPath}`);
+    }
+
+    // -------- LuaUnittest.lua --------
+    const luaUnittestPath = path.join(workDir, "LuaUnittest.lua");
+    const luaUnittestSrcPath = Tools.getLuaUnittestPathInExtension();
+    const luaUnittestSrc = fs.readFileSync(luaUnittestSrcPath);
+
+    let shouldCopyLuaUnittest = true;
+    if (fs.existsSync(luaUnittestPath)) {
+      try {
+        const luaUnittestDst = fs.readFileSync(luaUnittestPath);
+        const srcHash = calcHash(luaUnittestSrc);
+        const dstHash = calcHash(luaUnittestDst);
+        this.log(`[LuaTestController] LuaUnittest.lua hash comparison -> src(${srcHash}) vs dst(${dstHash})`);
+        shouldCopyLuaUnittest = srcHash !== dstHash;
+        if (!shouldCopyLuaUnittest) {
+          this.log(`[LuaTestController] LuaUnittest.lua up-to-date at ${luaUnittestPath}`);
+        }
+      } catch (e) {
+        this.logError("Failed to read existing LuaUnittest.lua, will overwrite", e);
+      }
+    }
+
+    if (shouldCopyLuaUnittest) {
+      this.log(`[LuaTestController] Overwriting LuaUnittest.lua (hash changed)`);
+      fs.writeFileSync(luaUnittestPath, luaUnittestSrc);
+      this.log(`[LuaTestController] Copied LuaUnittest.lua to ${luaUnittestPath}`);
     }
 
     this.filesCopied = true; // 标记已经拷贝过文件

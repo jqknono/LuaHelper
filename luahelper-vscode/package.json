@@ -2,7 +2,7 @@
     "name": "LuaForQingteng",
     "displayName": "LuaForQingTeng",
     "description": "LuaHelper, Intellisense, Linting, Debugging, Code formatting, High-performance, and more.",
-    "version": "7.2.29",
+    "version": "8.2.29",
     "publisher": "LuaForQingteng",
     "author": {
         "name": "Cecil",
@@ -265,7 +265,7 @@
                         "connectionPort": 8818,
                         "stopOnEntry": true,
                         "autoPathMode": false,
-                        "program": "C:/Program Files/TitanAgent/TitanAgent.exe",
+                        "program": "${config:luahelper.platform.titanagentPath3}",
                         "args": [
                             "-a",
                             "-c",
@@ -283,7 +283,7 @@
                         "connectionPort": 8818,
                         "stopOnEntry": true,
                         "autoPathMode": false,
-                        "program": "C:/Program Files/TitanAgent/bin/TitanAgent.exe",
+                        "program": "${config:luahelper.platform.titanagentPath4}",
                         "args": [
                             "-a",
                             "-c",
@@ -301,7 +301,7 @@
                         "connectionPort": 8818,
                         "stopOnEntry": true,
                         "autoPathMode": false,
-                        "program": "/titan/agent/titanagent",
+                        "program": "${config:luahelper.platform.titanagentPath3}",
                         "args": [
                             "-a",
                             "-c",
@@ -319,7 +319,7 @@
                         "connectionPort": 8818,
                         "stopOnEntry": true,
                         "autoPathMode": false,
-                        "program": "/titan/agent/bin/titanagent",
+                        "program": "${config:luahelper.platform.titanagentPath4}",
                         "args": [
                             "-a",
                             "-c",
@@ -389,7 +389,7 @@
                             "connectionPort": 8818,
                             "stopOnEntry": true,
                             "autoPathMode": false,
-                            "program": "C:/Program Files/TitanAgent/TitanAgent.exe",
+                            "program": "^\"\\${config:luahelper.platform.titanagentPath3}\"",
                             "args": [
                                 "-a",
                                 "-c",
@@ -411,7 +411,7 @@
                             "connectionPort": 8818,
                             "stopOnEntry": true,
                             "autoPathMode": false,
-                            "program": "C:/Program Files/TitanAgent/TitanAgent.exe",
+                            "program": "^\"\\${config:luahelper.platform.titanagentPath4}\"",
                             "args": [
                                 "-a",
                                 "-c",
@@ -455,7 +455,7 @@
                             "connectionPort": 8818,
                             "stopOnEntry": true,
                             "autoPathMode": false,
-                            "program": "/titan/agent/bin/titanagent",
+                            "program": "/titan/agent/titanagent",
                             "args": [
                                 "-a",
                                 "-c",
@@ -975,11 +975,41 @@
                     "type": "boolean",
                     "description": "%luahelper.Warn.CheckFloatEq%"
                 },
+                "luahelper.platform.titanagentPath3": {
+                    "type": "string",
+                    "scope": "resource",
+                    "default": "/titan/agent/titanagent",
+                    "description": "TitanAgent 3.x executable path. 在Windows上默认为 'C:/Program Files/TitanAgent/TitanAgent.exe', 在Linux上默认为 '/titan/agent/titanagent'",
+                    "examples": [
+                        "C:/Program Files/TitanAgent/TitanAgent.exe",
+                        "/titan/agent/titanagent"
+                    ]
+                },
+                "luahelper.platform.titanagentPath4": {
+                    "type": "string",
+                    "scope": "resource", 
+                    "default": "/titan/agent/titanagent",
+                    "description": "TitanAgent 4.x executable path. 在Windows上默认为 'C:/Program Files/TitanAgent/bin/TitanAgent.exe', 在Linux上默认为 '/titan/agent/titanagent'",
+                    "examples": [
+                        "C:/Program Files/TitanAgent/bin/TitanAgent.exe",
+                        "/titan/agent/titanagent"
+                    ]
+                },
+                "luahelper.platform.workdir": {
+                    "type": "string",
+                    "scope": "resource",
+                    "default": "/titan/agent/data/script",
+                    "description": "Default working directory for tests. 在Windows上默认为 'C:/Program Files/TitanAgent/data/script', 在Linux上默认为 '/titan/agent/data/script'",
+                    "examples": [
+                        "C:/Program Files/TitanAgent/data/script",
+                        "/titan/agent/data/script"
+                    ]
+                },
                 "luahelper.test.luaExe": {
                     "description": "%luahelper.test.luaExe%",
                     "type": "string",
                     "scope": "resource",
-                    "default": "/titan/agent/titanagent",
+                    "default": "${config:luahelper.platform.titanagentPath3}",
                     "order": 1
                 },
                 "luahelper.test.launchArgs": {
@@ -1047,7 +1077,7 @@
                     "description": "%luahelper.test.workdir%",
                     "type": "string",
                     "scope": "resource",
-                    "default": "/titan/agent/data/script",
+                    "default": "${config:luahelper.platform.workdir}",
                     "order": 10
                 }
             }
@@ -1067,7 +1097,7 @@
         "colors": []
     },
     "scripts": {
-        "build": "npm run clean && npm run compile",
+        "build": "npm run compile",
         "compile": "tsc -p ./",
         "clean": "rm -rf out",
         "watch": "tsc -watch -p ./",

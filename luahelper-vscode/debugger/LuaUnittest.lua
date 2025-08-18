@@ -289,7 +289,13 @@ end
 
 -- 运行单个测试函数
 function RunTest(testName)
+    Logger.separator("*",50)
     Logger.info("🚀 开始执行测试: " .. testName)
+    Logger.info("LuaUnittest.lua 路径: " .. debug.getinfo(1, "S").source)
+    
+    -- 打印开始标记，用于插件判断测试开始
+    Logger.status("TEST_BEGIN " .. testName)
+    
     TestFramework.current_test = testName
     TestFramework.passed = 0
     TestFramework.failed = 0
@@ -309,16 +315,23 @@ function RunTest(testName)
     end
 
     -- 执行测试函数，使用pcall来捕获任何错误
+    Logger.info("即将 pcall 执行测试函数: " .. tostring(testFunction))
     local success, error_message = pcall(testFunction)
+    Logger.info("pcall 结果: success=" .. tostring(success) .. ", error_message=" .. tostring(error_message))
 
     if success then
         -- 测试函数执行成功，检查断言结果
         if TestFramework.failed == 0 then
             Logger.success("测试 '" .. testName .. "' 通过 (" .. TestFramework.passed .. " 个断言)")
+            Logger.info("通过统计 => passed=" .. TestFramework.passed .. ", failed=" .. TestFramework.failed)
+            
+            -- 打印结束标记，用于插件判断测试完成
+            Logger.status("TEST_END " .. testName)
             return true
         else
             Logger.failure("测试 '" .. testName .. "' 失败 (" .. TestFramework.failed .. " 个失败, " ..
                                TestFramework.passed .. " 个通过)")
+            Logger.info("失败统计 => passed=" .. TestFramework.passed .. ", failed=" .. TestFramework.failed)
 
             -- 打印详细错误总结
             if #TestFramework.detailed_errors > 0 then
@@ -329,12 +342,15 @@ function RunTest(testName)
                 end
                 Logger.separator("-", 40)
             end
+            
+            -- 打印结束标记，用于插件判断测试完成
+            Logger.status("TEST_END " .. testName)
             return false
         end
     else
         -- 测试函数执行时发生异常
         Logger.error("测试 '" .. testName .. "' 执行异常:")
-        Logger.error("错误信息: " .. tostring(error_message))
+        Logger.info("异常 error_message=" .. tostring(error_message))
 
         -- 解析异常消息，提取位置和错误信息
         local location = "测试函数执行时"
@@ -363,11 +379,15 @@ function RunTest(testName)
         -- 打印堆栈跟踪
         Logger.error("堆栈跟踪:")
         local trace = getStackTrace()
+        Logger.info("堆栈深度: " .. #trace)
         for _, line in ipairs(trace) do
             Logger.error(line)
         end
 
         TestFramework.failed = TestFramework.failed + 1
+        
+        -- 打印结束标记，用于插件判断测试完成
+        Logger.status("TEST_END " .. testName)
         return false
     end
 end
@@ -446,7 +466,16 @@ end
 function Start()
     -- 获取环境变量中的测试函数名
     local testFunctionName = os.getenv("TEST_FUNCTION")
-    Logger.debug("TEST_FUNCTION: " .. (testFunctionName or "nil"))
+    Logger.separator("-",60)
+    Logger.info("TEST_FUNCTION: " .. (testFunctionName or "nil"))
+    Logger.info("package.path  = " .. tostring(package.path))
+    Logger.info("package.cpath = " .. tostring(package.cpath))
+    Logger.info("工作目录        = " .. (os.getenv("PWD") or "N/A"))
+    -- 打印已注册的测试列表
+    local registered = GetRegisteredTests()
+    Logger.info("已注册测试总数: " .. #registered)
+    Logger.info("已注册测试列表: " .. table.concat(registered, ", "))
+    Logger.separator("-",60)
     Logger.debug("颜色支持状态: " .. (Logger.isColorEnabled() and "已启用" or "已禁用"))
 
     Logger.separator("=", 60)
