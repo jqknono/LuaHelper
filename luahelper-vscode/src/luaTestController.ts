@@ -53,7 +53,7 @@ export class LuaTestController {
   private testController: vscode.TestController;
   private watchedFiles = new Map<string, vscode.FileSystemWatcher>();
   private context: vscode.ExtensionContext;
-  private filesCopied: boolean = false; // 标记是否已经拷贝过文件
+  private copiedDirs: Set<string> = new Set(); // 已复制文件的目录集合
   private outputChannel: vscode.OutputChannel; // 添加输出面板
   private testOutputChannel: vscode.OutputChannel; // 专门用于测试输出的通道
 
@@ -575,26 +575,69 @@ export class LuaTestController {
 
     const startTime = Date.now();
 
-    // 直接使用原始文件路径
-    let targetFilePath = filePath;
-    // 使用测试文件的父目录作为工作目录
+    // 解析固定工作目录（来自配置）并记录
+    const rawWorkDirCfg = vscode.workspace.getConfiguration("luahelper.test").get("workdir") as string;
+    const fixedWorkDir = this.resolvePathVariables(rawWorkDirCfg);
+    this.log(`[LuaTestController] FixedWorkdir(raw): ${rawWorkDirCfg}`);
+    this.log(`[LuaTestController] FixedWorkdir(resolved): ${fixedWorkDir}`);
+
+    // 使用测试文件的父目录作为运行时工作目录
     const workDir = path.dirname(filePath);
+    this.log(`[LuaTestController] RuntimeWorkdir(from test file): ${workDir}`);
 
+    // 对关键文件做存在性与 MD5 校验
+    const calcFileHash = (p: string): string => {
+      try {
+        const buf = fs.readFileSync(p);
+        return crypto.createHash("md5").update(buf).digest("hex");
+      } catch {
+        return "<MISSING>";
+      }
+    };
+
+    const extLuaUnittest = Tools.getLuaUnittestPathInExtension();
+    const extLuaPanda = Tools.getLuaPandaPathInExtension();
+    const extLuaUnittestHash = calcFileHash(extLuaUnittest);
+    const extLuaPandaHash = calcFileHash(extLuaPanda);
+    this.log(`[LuaTestController] Ext LuaUnittest.lua: ${extLuaUnittest} md5=${extLuaUnittestHash}`);
+    this.log(`[LuaTestController] Ext LuaPanda.lua    : ${extLuaPanda} md5=${extLuaPandaHash}`);
+
+    const fixedLuaUnittest = path.join(fixedWorkDir || "", "LuaUnittest.lua");
+    const fixedLuaPanda = path.join(fixedWorkDir || "", "LuaPanda.lua");
+    const fixedLuaUnittestHash = fixedWorkDir ? calcFileHash(fixedLuaUnittest) : "<N/A>";
+    const fixedLuaPandaHash = fixedWorkDir ? calcFileHash(fixedLuaPanda) : "<N/A>";
+    this.log(`[LuaTestController] Fixed LuaUnittest.lua: ${fixedLuaUnittest} md5=${fixedLuaUnittestHash}`);
+    this.log(`[LuaTestController] Fixed LuaPanda.lua    : ${fixedLuaPanda} md5=${fixedLuaPandaHash}`);
+
+    const runtimeLuaUnittest = path.join(workDir, "LuaUnittest.lua");
+    const runtimeLuaPanda = path.join(workDir, "LuaPanda.lua");
+    const runtimeLuaUnittestHash = calcFileHash(runtimeLuaUnittest);
+    const runtimeLuaPandaHash = calcFileHash(runtimeLuaPanda);
+    this.log(`[LuaTestController] Runtime LuaUnittest.lua: ${runtimeLuaUnittest} md5=${runtimeLuaUnittestHash}`);
+    this.log(`[LuaTestController] Runtime LuaPanda.lua    : ${runtimeLuaPanda} md5=${runtimeLuaPandaHash}`);
+
+    // 对比来源哈希与 runtime/fixed 哈希，帮助定位未替换问题
+    if (runtimeLuaUnittestHash !== "<MISSING>" && runtimeLuaUnittestHash !== extLuaUnittestHash) {
+      this.logError(
+        `[LuaTestController] RUNTIME_MISMATCH: LuaUnittest.lua runtime md5 ${runtimeLuaUnittestHash} != ext md5 ${extLuaUnittestHash}`
+      );
+    }
+    if (fixedWorkDir && fixedLuaUnittestHash !== "<MISSING>" && fixedLuaUnittestHash !== extLuaUnittestHash) {
+      this.logError(
+        `[LuaTestController] FIXEDDIR_MISMATCH: LuaUnittest.lua fixed md5 ${fixedLuaUnittestHash} != ext md5 ${extLuaUnittestHash}`
+      );
+    }
+
+    // 读取配置（保留以便其它参数使用）
     const testConfig = vscode.workspace.getConfiguration("luahelper.test");
-
-    // 获取配置值
     const luaExe = testConfig.get<string>("luaExe") || "";
-    const launchArgs = testConfig.get<string[]>("launchArgs") || [
-      "-a",
-      "-l",
-      "-u",
-    ];
+    const launchArgs = testConfig.get<string[]>("launchArgs") || ["-a", "-l", "-u"];
 
     // Build arguments array with custom lua args from launchArgs
     const args = [...launchArgs];
 
     // Add the test file path to the arguments（注意：spawnSync 的 args 不需要手动加引号）
-    args.push(targetFilePath);
+    args.push(filePath);
 
     // Set up environment variables including test function name
     const env = {
@@ -610,13 +653,13 @@ export class LuaTestController {
     this.log(`[LuaTestController] Args(JSON): ${JSON.stringify(args)}`);
 
     // 运行前置检查：目标文件存在性、大小、前 256 字节预览
-    const targetExists = fs.existsSync(targetFilePath);
-    this.log(`[LuaTestController] Target file exists: ${targetExists} -> ${targetFilePath}`);
+    const targetExists = fs.existsSync(filePath);
+    this.log(`[LuaTestController] Target file exists: ${targetExists} -> ${filePath}`);
     if (targetExists) {
       try {
-        const stat = fs.statSync(targetFilePath);
+        const stat = fs.statSync(filePath);
         this.log(`[LuaTestController] Target file size: ${stat.size} bytes`);
-        const fd = fs.openSync(targetFilePath, "r");
+        const fd = fs.openSync(filePath, "r");
         const buf = Buffer.alloc(256);
         const read = fs.readSync(fd, buf, 0, 256, 0);
         fs.closeSync(fd);
@@ -639,6 +682,38 @@ export class LuaTestController {
         this.logError(`[LuaTestController] Failed to list workDir ${workDir}`, e);
       }
     }
+
+    // 在执行前，尝试同步最新的 LuaUnittest.lua/LuaPanda.lua 到 fixed 与 runtime 目录
+    const syncFileIfNeeded = (srcPath: string, dstPath: string, label: string) => {
+      try {
+        const srcBuf = fs.readFileSync(srcPath);
+        const srcHash = crypto.createHash("md5").update(srcBuf).digest("hex");
+        let dstHash = "<MISSING>";
+        let need = true;
+        try {
+          const dstBuf = fs.readFileSync(dstPath);
+          dstHash = crypto.createHash("md5").update(dstBuf).digest("hex");
+          need = dstHash !== srcHash;
+        } catch {
+          need = true;
+        }
+        this.log(`[LuaTestController] SyncCheck ${label}: src(${srcHash}) -> dst(${dstHash}) need=${need}`);
+        if (need) {
+          fs.mkdirSync(path.dirname(dstPath), { recursive: true });
+          fs.writeFileSync(dstPath, srcBuf);
+          this.log(`[LuaTestController] Synced ${label} to ${dstPath}`);
+        }
+      } catch (e) {
+        this.logError(`[LuaTestController] Sync ${label} failed -> ${dstPath}`, e);
+      }
+    };
+
+    if (fixedWorkDir) {
+      syncFileIfNeeded(extLuaUnittest, fixedLuaUnittest, "LuaUnittest.lua (fixed)");
+      syncFileIfNeeded(extLuaPanda, fixedLuaPanda, "LuaPanda.lua (fixed)");
+    }
+    syncFileIfNeeded(extLuaUnittest, runtimeLuaUnittest, "LuaUnittest.lua (runtime)");
+    syncFileIfNeeded(extLuaPanda, runtimeLuaPanda, "LuaPanda.lua (runtime)");
 
     // Execute with custom arguments and environment variables
     const lua = cp.spawnSync(luaExe, args, {
@@ -717,8 +792,8 @@ export class LuaTestController {
     }
 
     // 通过检测自定义标记判断是否通过
-    const beginMarker = new RegExp(`TEST_BEGIN\\s+${testName}`, "i");
-    const endMarker = new RegExp(`TEST_END\\s+${testName}`, "i");
+    const beginMarker = new RegExp(`TEST_BEGIN\\s+${this.escapeRegExp(testName)}`, "i");
+    const endMarker = new RegExp(`TEST_END\\s+${this.escapeRegExp(testName)}`, "i");
     const beginFound = !!stdout.match(beginMarker);
     const endFound = !!stdout.match(endMarker);
 
@@ -733,15 +808,16 @@ export class LuaTestController {
         stdout.match(/test.*failed/i));
 
     this.log(`[LuaTestController] Test result evaluation for ${testName}:`);
+    const escapedName = this.escapeRegExp(testName);
+    const beginPattern = `TEST_BEGIN\\s+${escapedName}`;
+    const endPattern = `TEST_END\\s+${escapedName}`;
+    this.log(`[LuaTestController] - Marker regex (BEGIN): ${beginPattern}`);
+    this.log(`[LuaTestController] - Marker regex (END)  : ${endPattern}`);
     this.log(`[LuaTestController] - Found TEST_BEGIN: ${beginFound}`);
     this.log(`[LuaTestController] - Found TEST_END  : ${endFound}`);
-    if (!beginFound || !endFound) {
-      this.log(
-        `[LuaTestController] Marker scan failed, stdout tail(1000):\n${stdout.substring(Math.max(0, stdout.length - 1000))}`
-      );
-    }
+    this.log(`[LuaTestController] - Contains 'FAILED' keywords: ${!!explicitFailure}`);
     this.log(`[LuaTestController] - Exit Code      : ${exitCode}`);
-    this.log(`[LuaTestController] - Final result   : ${passed ? "PASSED" : "FAILED"}`);
+    this.log(`[LuaTestController] - strictMarkers  : ${testConfig.get<boolean>("strictMarkers", true)}`);
 
     if (passed) {
       this.log(`[LuaTestController] Marking test ${testName} as PASSED`);
@@ -967,19 +1043,55 @@ export class LuaTestController {
     return messages;
   }
 
+  // 解析 VS Code 风格路径变量：${config:key}、${env:VAR}、${workspaceFolder}
+  private resolvePathVariables(inputPath: string): string {
+    if (!inputPath) return inputPath;
+    let result = inputPath;
+    try {
+      // ${config:key}
+      result = result.replace(/\$\{config:([^}]+)\}/g, (_m, key) => {
+        try {
+          const v = vscode.workspace.getConfiguration().get<string>(String(key).trim());
+          return v ? v : "";
+        } catch {
+          return "";
+        }
+      });
+      // ${env:VAR}
+      result = result.replace(/\$\{env:([^}]+)\}/g, (_m, key) => {
+        return process.env[String(key).trim()] || "";
+      });
+      // ${workspaceFolder}
+      const ws = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0
+        ? vscode.workspace.workspaceFolders[0].uri.fsPath
+        : "";
+      result = result.replace(/\$\{workspaceFolder\}/g, ws);
+    } catch {
+      // ignore
+    }
+    return result;
+  }
+
   /**
    * 拷贝调试所需的文件到指定目录
    * 参考 initProcess 的实现逻辑
    */
   private copyRequiredFiles(): void {
-    if (this.filesCopied) {
-      return; // 如果已经拷贝过文件，则直接返回
+    // 从配置读取固定工作目录，并解析变量
+    const rawWorkDir = vscode.workspace.getConfiguration("luahelper.test").get("workdir") as string;
+    const workDir = this.resolvePathVariables(rawWorkDir);
+
+    this.log(`[LuaTestController] Workdir(raw): ${rawWorkDir}`);
+    this.log(`[LuaTestController] Workdir(resolved): ${workDir}`);
+
+    if (!workDir || workDir.trim() === "") {
+      this.logError("Workdir is empty. Please set luahelper.test.workdir");
+      return;
     }
 
+    // 不再提前返回：每次都进行 md5 比对与必要时覆盖，确保最新版本
+
     // 拷贝LuaPanda.lua和LuaUnittest.lua文件到配置的工作目录
-    const workDir = vscode.workspace
-      .getConfiguration("luahelper.test")
-      .get("workdir") as string;
     if (!workDir) {
       return;
     }
@@ -1049,7 +1161,7 @@ export class LuaTestController {
       this.log(`[LuaTestController] Copied LuaUnittest.lua to ${luaUnittestPath}`);
     }
 
-    this.filesCopied = true; // 标记已经拷贝过文件
+    this.copiedDirs.add(workDir); // 记录已复制目录（仅用于去重日志）
   }
 
   /**
@@ -1067,9 +1179,10 @@ export class LuaTestController {
 
     // 如果启用了logpanel，则写入输出面板
     if (shouldLogToPanel) {
+      const ts = new Date().toISOString();
       const fullMessage =
         args.length > 0 ? `${message} ${args.join(" ")}` : message;
-      this.outputChannel.appendLine(`[LOG] ${fullMessage}`);
+      this.outputChannel.appendLine(`[${ts}] [LOG] ${fullMessage}`);
     }
   }
 
@@ -1088,12 +1201,18 @@ export class LuaTestController {
 
     // 如果启用了logpanel，则写入输出面板
     if (shouldLogToPanel) {
+      const ts = new Date().toISOString();
       const fullMessage =
         args.length > 0
           ? `ERROR: ${message} ${args.join(" ")}`
           : `ERROR: ${message}`;
-      this.outputChannel.appendLine(`[ERROR] ${fullMessage}`);
+      this.outputChannel.appendLine(`[${ts}] [ERROR] ${fullMessage}`);
     }
+  }
+
+  // 正则转义工具，避免测试名中的特殊字符破坏匹配
+  private escapeRegExp(input: string): string {
+    return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 
   dispose() {
