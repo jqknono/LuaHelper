@@ -14,7 +14,7 @@ LuaHelper 扩展现在支持调试 Lua 测试用例，使开发者能够逐步�
 
 ### 测试文件命名
 默认情况下，扩展会查找以下模式的文件：
-- `**/[tT]est*.lua` (例如：`test.lua`, `Test.lua`, `testExample.lua`)
+- `**/{[tT]est,[uU]nittest}*.lua` (例如：`test.lua`, `Test.lua`, `unittest.lua`, `UnitTestExample.lua`)
 
 ### 测试函数命名
 测试函数应该以 `test` 或 `Test` 开头：
@@ -62,7 +62,7 @@ end
 ```json
 {
   "luahelper.test.luaExe": "lua",                    // Lua 可执行文件路径
-  "luahelper.test.testGlob": "**/[tT]est*.lua",      // 测试文件模式
+  "luahelper.test.testGlob": "**/{[tT]est,[uU]nittest}*.lua",      // 测试文件模式
   "luahelper.test.testRegex": "^\\s*function\\s+(?:\\w*:)?(?<test>[tT]est\\w*)\\(\\)(?:.*)$", // 测试函数正则
   "luahelper.test.debugPort": 8818,                 // 调试端口号
   "luahelper.test.stopOnEntry": true,               // 在入口处停止

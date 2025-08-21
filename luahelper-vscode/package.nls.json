@@ -84,7 +84,7 @@
     "luahelper.base.enableReport": "Report the number of users.",
     "luahelper.test.luaExe": "Path to Lua executable. Defaults to 'lua'",
     "luahelper.test.launchArgs": "Launch arguments for test execution",
-    "luahelper.test.testGlob": "Glob pattern to find test files. Defaults to '**/[tT]est*.lua'",
+    "luahelper.test.testGlob": "Glob pattern to find test files. Defaults to '**/{[tT]est,[uU]nittest}*.lua'",
     "luahelper.test.testRegex": "Regular expression to find test functions. Defaults to /^\\s*function\\s+(?:\\w*:)?(?<test>[tT]est\\w*)\\(\\)(?:.*)$/",
     "luahelper.test.testEncoding": "File encoding. Defaults to utf8",
     "luahelper.test.logpanel": "Enable test result output channel. Defaults to true",

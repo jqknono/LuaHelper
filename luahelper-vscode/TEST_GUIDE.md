@@ -11,7 +11,7 @@ LuaHelper VSCode插件现在支持自动发现和运行Lua测试文件。此功�
 ### 基本配置
 
 - **luahelper.test.luaExe**: Lua可执行文件路径 (默认: "lua")
-- **luahelper.test.testGlob**: 用于查找测试文件的Glob模式 (默认: "**/[tT]est*.lua")
+- **luahelper.test.testGlob**: 用于查找测试文件的Glob模式 (默认: "**/{[tT]est,[uU]nittest}*.lua")
 - **luahelper.test.testRegex**: 用于查找测试函数的正则表达式
 - **luahelper.test.testEncoding**: 测试文件编码，默认为 `"utf8"`
 

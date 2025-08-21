@@ -2,7 +2,7 @@
     "name": "LuaForQingteng",
     "displayName": "LuaForQingTeng",
     "description": "LuaHelper, Intellisense, Linting, Debugging, Code formatting, High-performance, and more.",
-    "version": "9.2.29",
+    "version": "10.2.29",
     "publisher": "LuaForQingteng",
     "author": {
         "name": "Cecil",
@@ -1028,7 +1028,7 @@
                     "description": "%luahelper.test.testGlob%",
                     "type": "string",
                     "scope": "resource",
-                    "default": "**/qttest*.lua",
+                    "default": "**/{[tT]est,[uU]nittest}*.lua",
                     "order": 3
                 },
                 "luahelper.test.testRegex": {
